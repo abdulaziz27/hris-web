@@ -1,0 +1,12 @@
+
+# Pastikan MySQL server running dan coba buat database secara manual:
+
+# Opsi 1: Dengan password
+mysql -uroot -ppasswordhris -h127.0.0.1 -P8889 -e "CREATE DATABASE IF NOT EXISTS db_hris CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# Opsi 2: Tanpa password (jika password belum di-set)
+# mysql -uroot -h127.0.0.1 -P8889 -e "CREATE DATABASE IF NOT EXISTS db_hris CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# Setelah database dibuat, jalankan migrations:
+# php artisan migrate:fresh --seed
+
