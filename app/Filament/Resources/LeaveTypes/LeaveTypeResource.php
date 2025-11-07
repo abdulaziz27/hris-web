@@ -20,11 +20,11 @@ class LeaveTypeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-tag';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Leave Management';
+    protected static UnitEnum|string|null $navigationGroup = 'Manajemen Cuti';
 
-    protected static ?string $navigationLabel = 'Leave Types';
+    protected static ?string $navigationLabel = 'Tipe Cuti';
 
-    protected static ?string $pluralLabel = 'Leave Types';
+    protected static ?string $pluralLabel = 'Tipe Cuti';
 
     protected static ?int $navigationSort = 41;
 

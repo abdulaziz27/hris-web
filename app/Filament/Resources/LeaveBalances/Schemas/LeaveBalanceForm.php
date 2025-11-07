@@ -13,10 +13,10 @@ class LeaveBalanceForm
     {
         return $schema
             ->components([
-                Section::make('Leave Balance Information')
+                Section::make('Informasi Saldo Cuti')
                     ->schema([
                         Select::make('employee_id')
-                            ->label('Employee')
+                            ->label('Karyawan')
                             ->required()
                             ->searchable()
                             ->relationship('employee', 'name')
@@ -24,7 +24,7 @@ class LeaveBalanceForm
                             ->disabled(fn ($record) => $record !== null),
 
                         Select::make('leave_type_id')
-                            ->label('Leave Type')
+                            ->label('Tipe Cuti')
                             ->required()
                             ->searchable()
                             ->relationship('leaveType', 'name')
@@ -32,7 +32,7 @@ class LeaveBalanceForm
                             ->disabled(fn ($record) => $record !== null),
 
                         TextInput::make('year')
-                            ->label('Year')
+                            ->label('Tahun')
                             ->required()
                             ->numeric()
                             ->minValue(2020)
@@ -41,7 +41,7 @@ class LeaveBalanceForm
                             ->disabled(fn ($record) => $record !== null),
 
                         TextInput::make('quota_days')
-                            ->label('Quota Days')
+                            ->label('Kuota Hari')
                             ->required()
                             ->numeric()
                             ->minValue(0)
@@ -53,7 +53,7 @@ class LeaveBalanceForm
                             }),
 
                         TextInput::make('used_days')
-                            ->label('Used Days')
+                            ->label('Hari Terpakai')
                             ->required()
                             ->numeric()
                             ->minValue(0)
@@ -61,7 +61,7 @@ class LeaveBalanceForm
                             ->disabled(),
 
                         // TextInput::make('carry_over_days')
-                        //     ->label('Carry Over Days')
+                        //     ->label('Hari Carry Over')
                         //     ->required()
                         //     ->numeric()
                         //     ->minValue(0)
@@ -74,7 +74,7 @@ class LeaveBalanceForm
                         //     }),
 
                         TextInput::make('remaining_days')
-                            ->label('Remaining Days')
+                            ->label('Sisa Hari')
                             ->required()
                             ->numeric()
                             ->minValue(0)

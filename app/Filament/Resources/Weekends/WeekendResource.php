@@ -16,11 +16,11 @@ class WeekendResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Settings';
+    protected static UnitEnum|string|null $navigationGroup = 'Pengaturan';
 
-    protected static ?string $navigationLabel = 'Weekends';
+    protected static ?string $navigationLabel = 'Hari Libur Weekend';
 
-    protected static ?string $pluralLabel = 'Weekends';
+    protected static ?string $pluralLabel = 'Hari Libur Weekend';
 
     protected static ?int $navigationSort = 2;
 

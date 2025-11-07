@@ -12,16 +12,10 @@ class JabatanSeeder extends Seeder
     public function run(): void
     {
         $jabatans = [
-            ['name' => 'Direktur Utama', 'description' => 'Pemimpin tertinggi perusahaan'],
-            ['name' => 'Manajer IT', 'description' => 'Mengelola departemen teknologi informasi'],
-            ['name' => 'Senior Developer', 'description' => 'Pengembang senior aplikasi'],
-            ['name' => 'Junior Developer', 'description' => 'Pengembang junior aplikasi'],
-            ['name' => 'UI/UX Designer', 'description' => 'Desainer antarmuka dan pengalaman pengguna'],
-            ['name' => 'Project Manager', 'description' => 'Mengelola proyek-proyek perusahaan'],
-            ['name' => 'HR Manager', 'description' => 'Mengelola sumber daya manusia'],
-            ['name' => 'Marketing Manager', 'description' => 'Mengelola strategi pemasaran'],
-            ['name' => 'Sales Executive', 'description' => 'Eksekutif penjualan'],
-            ['name' => 'Admin', 'description' => 'Administrator sistem'],
+            ['name' => 'Manager Operasional', 'description' => 'Pengelola operasional perkebunan dan perhutanan'],
+            ['name' => 'Supervisor Lapangan', 'description' => 'Pengawas operasional di lapangan, pembibitan, dan pemeliharaan'],
+            ['name' => 'Pekerja Kebun', 'description' => 'Pekerja lapangan yang melakukan penanaman, perawatan, dan pemanenan'],
+            ['name' => 'Staff Administrasi', 'description' => 'Staff yang mengelola administrasi, keuangan, dan dokumentasi'],
         ];
 
         foreach ($jabatans as $jabatan) {
@@ -31,6 +25,6 @@ class JabatanSeeder extends Seeder
             );
         }
 
-        $this->command->info('10 jabatans created/updated successfully.');
+        $this->command->info('4 jabatans created/updated successfully.');
     }
 }

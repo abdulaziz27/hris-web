@@ -28,9 +28,9 @@ class AdminPanelProvider extends PanelProvider
             ->registration()
             ->login(\App\Filament\Pages\Auth\Login::class)
             ->brandName('HRIS')
-            ->brandLogo(asset('img/logo-hris.svg'))
-            ->darkModeBrandLogo(asset('img/logo-hris-dark.svg'))
-            ->brandLogoHeight('2rem')
+            // ->brandLogo(asset('img/logo-hris.svg'))
+            // ->darkModeBrandLogo(asset('img/logo-hris-dark.svg'))
+            // ->brandLogoHeight('2rem')
             ->favicon(asset('favicon.svg'))
             ->colors([
                 'primary' => Color::Blue,

@@ -30,6 +30,7 @@ class User extends Authenticatable implements FilamentUser
         'jabatan_id',
         'departemen_id',
         'shift_kerja_id',
+        'location_id',
         'face_embedding',
         'image_url',
         'fcm_token',
@@ -82,6 +83,11 @@ class User extends Authenticatable implements FilamentUser
     public function shiftKerja()
     {
         return $this->belongsTo(\App\Models\ShiftKerja::class, 'shift_kerja_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(\App\Models\Location::class, 'location_id');
     }
 
     // Legacy many-to-many relationships (deprecated, for backward compatibility)

@@ -16,17 +16,17 @@ class LeaveTypesTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label('Nama')
                     ->sortable()
                     ->searchable(),
 
                 TextColumn::make('quota_days')
-                    ->label('Quota Days')
+                    ->label('Kuota Hari')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state == 0 ? 'Unlimited' : $state),
+                    ->formatStateUsing(fn ($state) => $state == 0 ? 'Tidak Terbatas' : $state),
 
                 IconColumn::make('is_paid')
-                    ->label('Is Paid')
+                    ->label('Dibayar')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
@@ -34,7 +34,7 @@ class LeaveTypesTable
                     ->falseColor('danger'),
 
                 TextColumn::make('created_at')
-                    ->label('Created')
+                    ->label('Dibuat')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -44,11 +44,12 @@ class LeaveTypesTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->label('Edit'),
+                    ->label('Ubah'),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->label('Hapus')
                         ->visible(fn () => auth()->user()->role === 'admin' || auth()->user()->role === 'hr'),
                 ]),
             ])

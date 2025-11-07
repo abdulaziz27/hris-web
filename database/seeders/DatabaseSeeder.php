@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             DepartemenSeeder::class,
             JabatanSeeder::class,
             ShiftKerjaSeeder::class,
+            LocationSeeder::class,
             UserSeeder::class,
             CompanySeeder::class,
 
@@ -35,6 +36,15 @@ class DatabaseSeeder extends Seeder
             OvertimeSeeder::class,
             IndonesiaPublicHoliday2025Seeder::class,
             AttendanceSeeder::class,
+
+            // Bulk employee seeder (must run after UserSeeder)
+            EmployeeBulkSeeder::class,
+
+            // Dashboard enrichment seeder (must run after AttendanceSeeder)
+            DashboardAttendanceSeeder::class,
+
+            // Dashboard statistics seeder (must run after EmployeeBulkSeeder)
+            DashboardStatsSeeder::class,
         ]);
     }
 }

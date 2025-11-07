@@ -19,9 +19,44 @@ class AttendanceController extends Controller
         $request->validate([
             'latitude' => 'required',
             'longitude' => 'required',
+            'location_id' => 'nullable|exists:locations,id',
         ]);
 
         $currentUser = $request->user();
+
+        // Determine location for geofence validation
+        $locationId = $request->location_id ?? $currentUser->location_id;
+
+        if (! $locationId) {
+            return response([
+                'message' => 'Lokasi kerja belum ditentukan. Hubungi admin untuk menetapkan lokasi Anda.',
+            ], 400);
+        }
+
+        $location = \App\Models\Location::find($locationId);
+
+        if (! $location || ! $location->is_active) {
+            return response([
+                'message' => 'Lokasi tidak valid atau tidak aktif.',
+            ], 400);
+        }
+
+        // Validate geofence: calculate distance (Haversine formula)
+        $distance = $this->calculateDistance(
+            (float) $request->latitude,
+            (float) $request->longitude,
+            (float) $location->latitude,
+            (float) $location->longitude
+        );
+
+        if ($distance > (float) $location->radius_km) {
+            return response([
+                'message' => 'Anda berada di luar radius lokasi kerja. Jarak Anda: '.number_format($distance, 2).' km, Maksimal: '.$location->radius_km.' km',
+                'distance' => $distance,
+                'max_radius' => $location->radius_km,
+                'location_name' => $location->name,
+            ], 400);
+        }
         $currentDateTime = now();
 
         $scheduledShiftId = ShiftAssignment::query()
@@ -67,6 +102,7 @@ class AttendanceController extends Controller
         $attendance = new Attendance;
         $attendance->user_id = $currentUser->id;
         $attendance->shift_id = $activeShift?->id;
+        $attendance->location_id = $location->id;
         $attendance->date = $currentDateTime->toDateString();
         $attendance->time_in = $currentDateTime->toTimeString();
         $attendance->latlon_in = $request->latitude.','.$request->longitude;
@@ -150,5 +186,25 @@ class AttendanceController extends Controller
             'message' => 'Success',
             'data' => $attendance,
         ], 200);
+    }
+
+    /**
+     * Calculate distance between two GPS coordinates using Haversine formula.
+     * Returns distance in kilometers.
+     */
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2): float
+    {
+        $earthRadius = 6371; // Earth radius in kilometers
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
     }
 }

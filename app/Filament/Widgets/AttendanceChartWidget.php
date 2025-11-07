@@ -8,7 +8,9 @@ use Filament\Widgets\ChartWidget;
 
 class AttendanceChartWidget extends ChartWidget
 {
-    protected ?string $heading = 'Grafik Absensi 7 Hari Terakhir';
+    protected ?string $heading = 'Grafik Absensi 30 Hari Terakhir';
+
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 2;
 
@@ -17,8 +19,8 @@ class AttendanceChartWidget extends ChartWidget
         $data = [];
         $labels = [];
 
-        // Ambil data 7 hari terakhir
-        for ($i = 6; $i >= 0; $i--) {
+        // Ambil data 30 hari terakhir
+        for ($i = 29; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('d M');
 

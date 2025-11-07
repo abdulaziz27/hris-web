@@ -189,7 +189,7 @@ class LaporanAbsensi extends Page implements HasTable
     {
         return [
             Action::make('export_pdf')
-                ->label('Export PDF')
+                ->label('Ekspor PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
                 ->action(function () {
@@ -218,7 +218,7 @@ class LaporanAbsensi extends Page implements HasTable
                 }),
 
             Action::make('export_csv')
-                ->label('Export CSV')
+                ->label('Ekspor CSV')
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->action(function () {

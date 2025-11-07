@@ -41,18 +41,18 @@ class DashboardStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('warning'),
 
-            Stat::make('Overtime Approved', $this->getApprovedOvertimeThisMonth())
+            Stat::make('Overtime Disetujui', $this->getApprovedOvertimeThisMonth())
                 ->description('Bulan ini yang disetujui')
                 ->descriptionIcon('heroicon-m-plus-circle')
                 ->color('success'),
 
-            Stat::make('Leave Approved', $this->getApprovedLeaveThisMonth())
+            Stat::make('Cuti Disetujui', $this->getApprovedLeaveThisMonth())
                 ->description('Bulan ini yang disetujui')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success'),
 
-            Stat::make('Complete Attendance', $this->getCompleteAttendanceThisMonth())
-                ->description('Check-in & check-out bulan ini')
+            Stat::make('Absensi Lengkap', $this->getCompleteAttendanceThisMonth())
+                ->description('Masuk & keluar bulan ini')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('primary'),
         ];

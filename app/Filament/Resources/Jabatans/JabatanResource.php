@@ -20,11 +20,11 @@ class JabatanResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-briefcase';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Master Data';
+    protected static UnitEnum|string|null $navigationGroup = 'Data Master';
 
     protected static ?int $navigationSort = 50;
 
-    protected static ?string $navigationLabel = 'Positions';
+    protected static ?string $navigationLabel = 'Jabatan';
 
     public static function form(Schema $schema): Schema
     {

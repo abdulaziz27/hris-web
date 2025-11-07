@@ -18,7 +18,7 @@ class UsersTable
         return $table
             ->columns([
                 ImageColumn::make('image_url')
-                    ->label('Avatar')
+                    ->label('Foto Profil')
                     ->disk('public')
                     ->circular()
                     ->defaultImageUrl(fn () => 'data:image/svg+xml;base64,'.base64_encode('
@@ -30,6 +30,7 @@ class UsersTable
                     '))
                     ->size(50),
                 TextColumn::make('name')
+                    ->label('Nama')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('email')
@@ -37,8 +38,10 @@ class UsersTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('phone')
+                    ->label('Telepon')
                     ->searchable(),
                 TextColumn::make('role')
+                    ->label('Peran')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'admin' => 'danger',
@@ -46,7 +49,13 @@ class UsersTable
                         'employee' => 'success',
                         default => 'gray',
                     })
-                    ->searchable(),
+                    ->searchable()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'admin' => 'Admin',
+                        'manager' => 'Manager',
+                        'employee' => 'Karyawan',
+                        default => $state,
+                    }),
                 TextColumn::make('jabatan.name')
                     ->label('Jabatan')
                     ->badge()
@@ -71,19 +80,31 @@ class UsersTable
                     ->sortable()
                     ->placeholder('Belum diset')
                     ->icon('heroicon-o-clock'),
+                TextColumn::make('location.name')
+                    ->label('Lokasi')
+                    ->badge()
+                    ->color('success')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Belum diset')
+                    ->icon('heroicon-o-map-pin')
+                    ->toggleable(),
                 TextColumn::make('created_at')
+                    ->label('Dibuat Pada')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('role')
+                    ->label('Peran')
                     ->options([
                         'admin' => 'Admin',
                         'manager' => 'Manager',
-                        'employee' => 'Employee',
+                        'employee' => 'Karyawan',
                     ]),
                 SelectFilter::make('department')
+                    ->label('Departemen')
                     ->options(function () {
                         return \App\Models\User::distinct()
                             ->whereNotNull('department')
@@ -93,12 +114,15 @@ class UsersTable
                     ->searchable(),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                ViewAction::make()
+                    ->label('Lihat'),
+                EditAction::make()
+                    ->label('Ubah'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('Hapus'),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

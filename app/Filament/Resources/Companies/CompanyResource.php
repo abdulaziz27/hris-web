@@ -18,11 +18,11 @@ class CompanyResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Settings';
+    protected static UnitEnum|string|null $navigationGroup = 'Pengaturan';
 
     protected static ?int $navigationSort = 60;
 
-    protected static ?string $navigationLabel = 'Company Settings';
+    protected static ?string $navigationLabel = 'Pengaturan Perusahaan';
 
     protected static ?string $slug = 'company-settings';
 

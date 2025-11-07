@@ -12,6 +12,7 @@ class Attendance extends Model
     protected $fillable = [
         'user_id',
         'shift_id',
+        'location_id',
         'date',
         'time_in',
         'time_out',
@@ -45,5 +46,10 @@ class Attendance extends Model
     public function shift()
     {
         return $this->belongsTo(ShiftKerja::class, 'shift_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'location_id');
     }
 }

@@ -20,55 +20,55 @@ class LeaveBalancesTable
         return $table
             ->columns([
                 TextColumn::make('employee.name')
-                    ->label('Employee')
+                    ->label('Karyawan')
                     ->sortable()
                     ->searchable(),
 
                 TextColumn::make('leaveType.name')
-                    ->label('Leave Type')
+                    ->label('Tipe Cuti')
                     ->sortable()
                     ->searchable(),
 
                 TextColumn::make('year')
-                    ->label('Year')
+                    ->label('Tahun')
                     ->sortable(),
 
                 TextColumn::make('quota_days')
-                    ->label('Quota Days')
+                    ->label('Kuota Hari')
                     ->sortable(),
 
                 TextColumn::make('used_days')
-                    ->label('Used Days')
+                    ->label('Hari Terpakai')
                     ->sortable(),
 
                 TextColumn::make('remaining_days')
-                    ->label('Remaining Days')
+                    ->label('Sisa Hari')
                     ->sortable()
                     ->color(fn ($state) => $state <= 0 ? 'danger' : ($state <= 3 ? 'warning' : 'success')),
 
                 // TextColumn::make('carry_over_days')
-                //     ->label('Carry Over Days')
+                //     ->label('Hari Carry Over')
                 //     ->sortable(),
 
                 TextColumn::make('last_updated')
-                    ->label('Last Updated')
+                    ->label('Terakhir Diperbarui')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->placeholder('-'),
             ])
             ->filters([
                 SelectFilter::make('employee_id')
-                    ->label('Employee')
+                    ->label('Karyawan')
                     ->relationship('employee', 'name')
                     ->searchable(),
 
                 SelectFilter::make('leave_type_id')
-                    ->label('Leave Type')
+                    ->label('Tipe Cuti')
                     ->relationship('leaveType', 'name')
                     ->searchable(),
 
                 SelectFilter::make('year')
-                    ->label('Year')
+                    ->label('Tahun')
                     ->options(function () {
                         $currentYear = now()->year;
 
@@ -151,6 +151,7 @@ class LeaveBalancesTable
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->label('Hapus')
                         ->visible(fn () => auth()->user()->role === 'admin' || auth()->user()->role === 'hr'),
                 ]),
             ])

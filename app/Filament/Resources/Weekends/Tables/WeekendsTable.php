@@ -20,25 +20,25 @@ class WeekendsTable
         return $table
             ->columns([
                 TextColumn::make('date')
-                    ->label('Date')
+                    ->label('Tanggal')
                     ->date('d/m/Y (D)')
                     ->sortable()
                     ->badge()
                     ->color('gray'),
 
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label('Nama')
                     ->default('Weekend'),
 
                 TextColumn::make('created_at')
-                    ->label('Generated At')
+                    ->label('Di-generate Pada')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('year')
-                    ->label('Year')
+                    ->label('Tahun')
                     ->options(function () {
                         $years = DB::table('holidays')
                             ->where('type', 'weekend')
@@ -67,33 +67,34 @@ class WeekendsTable
             ])
             ->headerActions([
                 Action::make('generate_weekends')
-                    ->label('Generate Weekends')
+                    ->label('Generate Weekend')
                     ->icon('heroicon-o-calendar-days')
                     ->color('success')
                     ->form([
                         TextInput::make('year')
-                            ->label('Year')
+                            ->label('Tahun')
                             ->required()
                             ->numeric()
                             ->minValue(2020)
                             ->maxValue(2100)
                             ->default(now()->year),
                     ])
-                    ->modalHeading('Generate Weekend Holidays')
-                    ->modalDescription('This will automatically generate all Saturdays and Sundays for the selected year.')
+                    ->modalHeading('Generate Hari Libur Weekend')
+                    ->modalDescription('Ini akan otomatis menghasilkan semua hari Sabtu dan Minggu untuk tahun yang dipilih.')
                     ->action(function (array $data) {
                         $result = WorkdayCalculator::generateWeekendForYear($data['year']);
 
                         \Filament\Notifications\Notification::make()
-                            ->title('Weekends generated successfully')
+                            ->title('Weekend berhasil di-generate')
                             ->success()
-                            ->body("Inserted: {$result['inserted']}, Skipped: {$result['skipped']}")
+                            ->body("Ditambahkan: {$result['inserted']}, Dilewati: {$result['skipped']}")
                             ->send();
                     }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->label('Hapus')
                         ->visible(fn () => auth()->user()->role === 'admin' || auth()->user()->role === 'hr'),
                 ]),
             ])

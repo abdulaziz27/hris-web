@@ -3,13 +3,13 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\AttendanceChartWidget;
+use App\Filament\Widgets\CustomAccountWidget;
 use App\Filament\Widgets\DashboardStatsWidget;
 use App\Filament\Widgets\LatestAttendanceWidget;
 use App\Filament\Widgets\PendingApprovalsWidget;
 use App\Filament\Widgets\PendingOvertimeWidget;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
-use Filament\Widgets\AccountWidget;
 
 class Dashboard extends BaseDashboard
 {
@@ -27,7 +27,7 @@ class Dashboard extends BaseDashboard
             LatestAttendanceWidget::class,
             PendingApprovalsWidget::class,
             PendingOvertimeWidget::class,
-            AccountWidget::class,
+            CustomAccountWidget::class,
         ];
     }
 

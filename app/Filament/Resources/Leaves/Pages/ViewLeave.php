@@ -14,6 +14,7 @@ class ViewLeave extends ViewRecord
     {
         return [
             EditAction::make()
+                ->label('Ubah')
                 ->visible(fn ($record) => $record->status === 'pending'),
         ];
     }

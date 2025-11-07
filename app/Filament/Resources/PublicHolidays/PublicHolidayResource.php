@@ -20,11 +20,11 @@ class PublicHolidayResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Settings';
+    protected static UnitEnum|string|null $navigationGroup = 'Pengaturan';
 
-    protected static ?string $navigationLabel = 'Public Holidays';
+    protected static ?string $navigationLabel = 'Hari Libur Publik';
 
-    protected static ?string $pluralLabel = 'Public Holidays';
+    protected static ?string $pluralLabel = 'Hari Libur Publik';
 
     protected static ?int $navigationSort = 3;
 

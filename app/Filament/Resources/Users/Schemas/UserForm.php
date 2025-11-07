@@ -16,27 +16,31 @@ class UserForm
             ->columns(2)
             ->components([
                 TextInput::make('name')
+                    ->label('Nama')
                     ->required()
                     ->maxLength(255),
                 TextInput::make('email')
-                    ->label('Email address')
+                    ->label('Alamat Email')
                     ->email()
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
                 TextInput::make('password')
+                    ->label('Kata Sandi')
                     ->password()
                     ->required(fn (string $context): bool => $context === 'create')
                     ->dehydrated(fn ($state) => filled($state))
                     ->minLength(8),
                 TextInput::make('phone')
+                    ->label('Telepon')
                     ->tel()
                     ->maxLength(20),
                 Select::make('role')
+                    ->label('Peran')
                     ->options([
                         'admin' => 'Admin',
                         'manager' => 'Manager',
-                        'employee' => 'Employee',
+                        'employee' => 'Karyawan',
                     ])
                     ->required()
                     ->default('employee'),
@@ -61,8 +65,14 @@ class UserForm
                     ->searchable()
                     ->preload()
                     ->helperText('Pilih 1 shift kerja untuk karyawan'),
+                Select::make('location_id')
+                    ->label('Lokasi Kerja')
+                    ->relationship('location', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->helperText('Pilih lokasi kerja default untuk karyawan (opsional)'),
                 FileUpload::make('image_url')
-                    ->label('Avatar')
+                    ->label('Foto Profil')
                     ->image()
                     ->imageEditor()
                     ->directory('avatars')
@@ -70,11 +80,11 @@ class UserForm
                     ->disk('public')
                     ->columnSpanFull(),
                 Textarea::make('face_embedding')
-                    ->label('Face Embedding Data')
+                    ->label('Data Face Embedding')
                     ->hidden()
                     ->columnSpanFull(),
                 TextInput::make('fcm_token')
-                    ->label('FCM Token')
+                    ->label('Token FCM')
                     ->hidden()
                     ->columnSpanFull(),
             ]);

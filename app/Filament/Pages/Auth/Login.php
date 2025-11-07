@@ -41,16 +41,16 @@ class Login extends BaseLogin
 
     public function getHeading(): string|Htmlable
     {
-        return 'Sign in to HRIS';
+        return 'Masuk ke HRIS';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
         if (app()->environment(['local', 'development'])) {
-            return 'Development mode: Login credentials are pre-filled';
+            return 'Mode pengembangan: Kredensial login sudah diisi otomatis';
         }
 
-        return 'Welcome back! Please sign in to your account.';
+        return 'Selamat datang kembali! Silakan masuk ke akun Anda.';
     }
 
     public function authenticate(): ?LoginResponse

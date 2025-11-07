@@ -17,29 +17,30 @@ class AttendanceForm
             ->columns(2)
             ->components([
                 Select::make('user_id')
-                    ->label('Employee')
+                    ->label('Karyawan')
                     ->options(User::query()->pluck('name', 'id'))
                     ->required()
                     ->searchable()
                     ->preload(),
                 DatePicker::make('date')
+                    ->label('Tanggal')
                     ->required()
                     ->default(now())
                     ->native(false),
                 TimePicker::make('time_in')
-                    ->label('Check In Time')
+                    ->label('Waktu Masuk')
                     ->required()
                     ->seconds(false),
                 TimePicker::make('time_out')
-                    ->label('Check Out Time')
+                    ->label('Waktu Keluar')
                     ->seconds(false),
                 TextInput::make('latlon_in')
-                    ->label('Check In Location (Lat, Lon)')
-                    ->placeholder('e.g., -6.2088, 106.8456')
+                    ->label('Lokasi Masuk (Lat, Lon)')
+                    ->placeholder('Contoh: -6.2088, 106.8456')
                     ->required(),
                 TextInput::make('latlon_out')
-                    ->label('Check Out Location (Lat, Lon)')
-                    ->placeholder('e.g., -6.2088, 106.8456'),
+                    ->label('Lokasi Keluar (Lat, Lon)')
+                    ->placeholder('Contoh: -6.2088, 106.8456'),
             ]);
     }
 }

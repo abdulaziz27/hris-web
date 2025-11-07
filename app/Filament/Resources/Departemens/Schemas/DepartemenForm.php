@@ -13,8 +13,10 @@ class DepartemenForm
         return $schema
             ->components([
                 TextInput::make('name')
+                    ->label('Nama')
                     ->required(),
                 Textarea::make('description')
+                    ->label('Deskripsi')
                     ->default(null)
                     ->columnSpanFull(),
             ]);

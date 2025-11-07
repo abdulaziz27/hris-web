@@ -13,63 +13,27 @@ class CompanyInfolist
     {
         return $schema
             ->components([
-                Section::make('Company Information')
+                Section::make('Informasi Perusahaan')
                     ->schema([
                         TextEntry::make('name')
-                            ->label('Company Name')
+                            ->label('Nama Perusahaan')
                             ->weight('bold')
                             ->size('lg'),
 
                         TextEntry::make('email')
-                            ->label('Email Address')
+                            ->label('Alamat Email')
                             ->icon('heroicon-o-envelope')
                             ->copyable(),
 
                         TextEntry::make('address')
-                            ->label('Address')
+                            ->label('Alamat')
                             ->icon('heroicon-o-map-pin')
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
 
-                Section::make('Location Settings')
-                    ->schema([
-                        TextEntry::make('latitude')
-                            ->label('Latitude')
-                            ->icon('heroicon-o-map-pin')
-                            ->copyable(),
-
-                        TextEntry::make('longitude')
-                            ->label('Longitude')
-                            ->icon('heroicon-o-map-pin')
-                            ->copyable(),
-
-                        TextEntry::make('radius_km')
-                            ->label('Check-in Radius')
-                            ->suffix(' km')
-                            ->badge()
-                            ->color('info'),
-
-                        TextEntry::make('attendance_type')
-                            ->label('Attendance Method')
-                            ->badge()
-                            ->formatStateUsing(fn (string $state): string => match ($state) {
-                                'location_based_only' => 'Location Based (GPS)',
-                                'face_recognition_only' => 'Face Recognition',
-                                'hybrid' => 'Hybrid (GPS + Face)',
-                                default => $state,
-                            })
-                            ->color(fn (string $state): string => match ($state) {
-                                'location_based_only' => 'primary',
-                                'face_recognition_only' => 'success',
-                                'hybrid' => 'warning',
-                                default => 'gray',
-                            }),
-                    ])
-                    ->columns(4),
-
-                Section::make('Available Work Shifts')
-                    ->description('Configured shifts for this company')
+                Section::make('Shift Kerja yang Tersedia')
+                    ->description('Shift yang dikonfigurasi untuk perusahaan ini')
                     ->schema([
                         TextEntry::make('shifts')
                             ->label('')
@@ -79,11 +43,11 @@ class CompanyInfolist
                                     ->get()
                                     ->map(function ($shift) {
                                         $crossDay = $shift->is_cross_day ? ' 🌙' : '';
-                                        $grace = $shift->grace_period_minutes.' min grace';
+                                        $grace = $shift->grace_period_minutes.' menit tenggang';
                                         $employees = $shift->users()->count();
 
                                         return sprintf(
-                                            '%s: %s - %s%s (%s, %d employees)',
+                                            '%s: %s - %s%s (%s, %d karyawan)',
                                             $shift->name,
                                             $shift->start_time->format('H:i'),
                                             $shift->end_time->format('H:i'),
@@ -96,7 +60,7 @@ class CompanyInfolist
                             })
                             ->listWithLineBreaks()
                             ->bulleted()
-                            ->placeholder('No shifts configured'),
+                            ->placeholder('Tidak ada shift yang dikonfigurasi'),
                     ])
                     ->collapsible(),
             ]);

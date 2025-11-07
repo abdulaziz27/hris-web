@@ -19,23 +19,23 @@ class AttendancesTable
         return $table
             ->columns([
                 TextColumn::make('user.name')
-                    ->label('User')
+                    ->label('Karyawan')
                     ->searchable()
                     ->sortable()
                     ->weight('medium'),
                 TextColumn::make('date')
-                    ->label('Date')
+                    ->label('Tanggal')
                     ->date('d M Y')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('time_in')
-                    ->label('Check In')
+                    ->label('Masuk')
                     ->time('H:i')
                     ->sortable()
                     ->icon('heroicon-o-arrow-right-on-rectangle')
                     ->color('success'),
                 TextColumn::make('time_out')
-                    ->label('Check Out')
+                    ->label('Keluar')
                     ->time('H:i')
                     ->sortable()
                     ->placeholder('-')
@@ -45,9 +45,9 @@ class AttendancesTable
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'on_time' => 'On Time',
-                        'late' => 'Late',
-                        'absent' => 'Absent',
+                        'on_time' => 'Tepat Waktu',
+                        'late' => 'Terlambat',
+                        'absent' => 'Tidak Hadir',
                         default => ucfirst($state),
                     })
                     ->color(fn (string $state): string => match ($state) {
@@ -58,7 +58,7 @@ class AttendancesTable
                     })
                     ->sortable(),
                 TextColumn::make('total_hours')
-                    ->label('Total Hours')
+                    ->label('Total Jam')
                     ->getStateUsing(function ($record) {
                         if (! $record->time_out) {
                             return '-';
@@ -67,7 +67,7 @@ class AttendancesTable
                         $checkOut = \Carbon\Carbon::parse($record->time_out);
                         $duration = $checkIn->diff($checkOut);
 
-                        return sprintf('%d:%02d hrs', $duration->h, $duration->i);
+                        return sprintf('%d:%02d jam', $duration->h, $duration->i);
                     })
                     ->badge()
                     ->color('info')
@@ -76,26 +76,35 @@ class AttendancesTable
                     ->label('Shift')
                     ->badge()
                     ->color('primary')
-                    ->placeholder('No Shift')
+                    ->placeholder('Tidak Ada Shift')
                     ->sortable()
                     ->searchable(),
+                TextColumn::make('location.name')
+                    ->label('Lokasi')
+                    ->placeholder('Tidak Ada Lokasi')
+                    ->badge()
+                    ->color('success')
+                    ->sortable()
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('latlon_in')
-                    ->label('Check In Location')
+                    ->label('Lokasi Masuk')
                     ->limit(20)
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('latlon_out')
-                    ->label('Check Out Location')
+                    ->label('Lokasi Keluar')
                     ->limit(20)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Filter::make('date_range')
+                    ->label('Rentang Tanggal')
                     ->form([
                         \Filament\Forms\Components\DatePicker::make('date_from')
-                            ->label('From Date')
+                            ->label('Dari Tanggal')
                             ->default(now()->subMonth()),
                         \Filament\Forms\Components\DatePicker::make('date_to')
-                            ->label('To Date')
+                            ->label('Sampai Tanggal')
                             ->default(now()),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -112,24 +121,25 @@ class AttendancesTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['date_from'] ?? null) {
-                            $indicators[] = 'From: '.\Carbon\Carbon::parse($data['date_from'])->format('d M Y');
+                            $indicators[] = 'Dari: '.\Carbon\Carbon::parse($data['date_from'])->format('d M Y');
                         }
                         if ($data['date_to'] ?? null) {
-                            $indicators[] = 'To: '.\Carbon\Carbon::parse($data['date_to'])->format('d M Y');
+                            $indicators[] = 'Sampai: '.\Carbon\Carbon::parse($data['date_to'])->format('d M Y');
                         }
 
                         return $indicators;
                     }),
                 SelectFilter::make('user_id')
-                    ->label('User')
+                    ->label('Karyawan')
                     ->relationship('user', 'name')
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('status')
+                    ->label('Status')
                     ->options([
-                        'on_time' => 'On Time',
-                        'late' => 'Late',
-                        'absent' => 'Absent',
+                        'on_time' => 'Tepat Waktu',
+                        'late' => 'Terlambat',
+                        'absent' => 'Tidak Hadir',
                     ])
                     ->multiple(),
                 SelectFilter::make('shift_id')
@@ -137,13 +147,19 @@ class AttendancesTable
                     ->relationship('shift', 'name')
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('location_id')
+                    ->label('Lokasi')
+                    ->relationship('location', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->recordActions([
-                ViewAction::make(),
+                ViewAction::make()
+                    ->label('Lihat'),
             ])
             ->toolbarActions([
                 Action::make('export_csv')
-                    ->label('Export CSV')
+                    ->label('Ekspor CSV')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
                     ->action(function ($livewire) {
@@ -160,7 +176,7 @@ class AttendancesTable
                             ->with(['user', 'shift'])
                             ->get();
 
-                        $csv = "User,Date,Check In,Check Out,Status,Total Hours,Shift\n";
+                        $csv = "Karyawan,Tanggal,Masuk,Keluar,Status,Total Jam,Shift\n";
                         foreach ($attendances as $attendance) {
                             $totalHours = '-';
                             if ($attendance->time_out) {
@@ -176,9 +192,14 @@ class AttendancesTable
                                 $attendance->date ? \Carbon\Carbon::parse($attendance->date)->format('d M Y') : '-',
                                 $attendance->time_in ? \Carbon\Carbon::parse($attendance->time_in)->format('H:i') : '-',
                                 $attendance->time_out ? \Carbon\Carbon::parse($attendance->time_out)->format('H:i') : '-',
-                                ucfirst(str_replace('_', ' ', $attendance->status)),
+                                match ($attendance->status) {
+                                    'on_time' => 'Tepat Waktu',
+                                    'late' => 'Terlambat',
+                                    'absent' => 'Tidak Hadir',
+                                    default => ucfirst(str_replace('_', ' ', $attendance->status)),
+                                },
                                 $totalHours,
-                                $attendance->shift->name ?? 'No Shift'
+                                $attendance->shift->name ?? 'Tidak Ada Shift'
                             );
                         }
 
@@ -187,7 +208,8 @@ class AttendancesTable
                         }, 'attendances-'.now()->format('Y-m-d').'.csv');
                     }),
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('Hapus'),
                 ]),
             ])
             ->defaultSort('date', 'desc');

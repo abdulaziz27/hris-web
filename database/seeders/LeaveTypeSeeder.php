@@ -14,12 +14,12 @@ class LeaveTypeSeeder extends Seeder
     {
         $leaveTypes = [
             [
-                'name' => 'Annual Leave',
+                'name' => 'Cuti Tahunan',
                 'quota_days' => 12,
                 'is_paid' => true,
             ],
             [
-                'name' => 'Sick Leave',
+                'name' => 'Cuti Sakit',
                 'quota_days' => 90,
                 'is_paid' => true,
             ],

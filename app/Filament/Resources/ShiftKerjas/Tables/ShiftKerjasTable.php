@@ -19,27 +19,27 @@ class ShiftKerjasTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Shift Name')
+                    ->label('Nama Shift')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
 
                 TextColumn::make('start_time')
-                    ->label('Start Time')
+                    ->label('Jam Mulai')
                     ->time('H:i')
                     ->sortable()
                     ->icon('heroicon-o-clock')
                     ->iconPosition(IconPosition::Before),
 
                 TextColumn::make('end_time')
-                    ->label('End Time')
+                    ->label('Jam Selesai')
                     ->time('H:i')
                     ->sortable()
                     ->icon('heroicon-o-clock')
                     ->iconPosition(IconPosition::Before),
 
                 IconColumn::make('is_cross_day')
-                    ->label('Cross Midnight')
+                    ->label('Lewat Tengah Malam')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
@@ -48,8 +48,8 @@ class ShiftKerjasTable
                     ->alignCenter(),
 
                 TextColumn::make('grace_period_minutes')
-                    ->label('Grace Period')
-                    ->suffix(' min')
+                    ->label('Masa Tenggang')
+                    ->suffix(' menit')
                     ->sortable()
                     ->alignCenter()
                     ->badge()
@@ -65,23 +65,25 @@ class ShiftKerjasTable
                     ->alignCenter(),
 
                 TextColumn::make('users_count')
-                    ->label('Employees')
+                    ->label('Karyawan')
                     ->counts('users')
                     ->badge()
                     ->color('primary')
                     ->alignCenter(),
 
                 TextColumn::make('description')
-                    ->label('Description')
+                    ->label('Deskripsi')
                     ->limit(50)
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
+                    ->label('Dibuat Pada')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
+                    ->label('Diperbarui Pada')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -89,23 +91,26 @@ class ShiftKerjasTable
             ->filters([
                 TernaryFilter::make('is_active')
                     ->label('Status')
-                    ->placeholder('All Shifts')
-                    ->trueLabel('Active Only')
-                    ->falseLabel('Inactive Only'),
+                    ->placeholder('Semua Shift')
+                    ->trueLabel('Aktif Saja')
+                    ->falseLabel('Tidak Aktif Saja'),
 
                 TernaryFilter::make('is_cross_day')
-                    ->label('Cross Midnight')
-                    ->placeholder('All Shifts')
-                    ->trueLabel('Cross Midnight')
-                    ->falseLabel('Same Day'),
+                    ->label('Lewat Tengah Malam')
+                    ->placeholder('Semua Shift')
+                    ->trueLabel('Lewat Tengah Malam')
+                    ->falseLabel('Hari Sama'),
             ])
             ->recordActions([
-                ViewAction::make(),
-                EditAction::make(),
+                ViewAction::make()
+                    ->label('Lihat'),
+                EditAction::make()
+                    ->label('Ubah'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('Hapus'),
                 ]),
             ])
             ->defaultSort('name', 'asc');

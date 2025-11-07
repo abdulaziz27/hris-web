@@ -163,13 +163,13 @@ class OvertimesTable
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->label('Detail'),
+                    ->label('Lihat'),
                 EditAction::make()
-                    ->label('Edit'),
+                    ->label('Ubah'),
             ])
             ->headerActions([
                 \Filament\Actions\Action::make('export_pdf')
-                    ->label('Export PDF')
+                    ->label('Ekspor PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('danger')
                     ->action(function (\Livewire\Component $livewire) {
@@ -179,7 +179,8 @@ class OvertimesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('Hapus'),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

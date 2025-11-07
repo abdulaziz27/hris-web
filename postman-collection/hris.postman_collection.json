@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "52ff7f95-d0ac-4b1a-a3aa-f90990a5f837",
-		"name": "FIC16-Absensi",
+		"name": "hris",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "3117985",
 		"_collection_link": "https://bold-satellite-2123.postman.co/workspace/New-Team-Workspace~82ebd54c-ab06-414e-a28c-44644a99c1b6/collection/3117985-52ff7f95-d0ac-4b1a-a3aa-f90990a5f837?action=share&source=collection_link&creator=3117985"
@@ -14,7 +14,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\":\"bahri@fic16.com\",\n    \"password\":\"12345678\"\n}",
+					"raw": "{\n    \"email\":\"john@company.com\",\n    \"password\":\"password\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -42,7 +42,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\":\"bahri@fic16.com\",\n    \"password\":\"12345678\"\n}",
+							"raw": "{\n    \"email\":\"john@compny.com\",\n    \"password\":\"password\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"

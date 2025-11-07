@@ -20,11 +20,11 @@ class DepartemenResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-building-library';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Master Data';
+    protected static UnitEnum|string|null $navigationGroup = 'Data Master';
 
     protected static ?int $navigationSort = 51;
 
-    protected static ?string $navigationLabel = 'Departments';
+    protected static ?string $navigationLabel = 'Departemen';
 
     public static function form(Schema $schema): Schema
     {

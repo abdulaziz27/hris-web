@@ -7,7 +7,7 @@ Route::get('/user', function (Request $request) {
     $user = $request->user();
 
     // Load relationships
-    $user->load(['shiftKerja', 'departemen']);
+    $user->load(['shiftKerja', 'departemen', 'location']);
 
     return response([
         'user' => $user,
@@ -27,6 +27,14 @@ Route::get('/user', function (Request $request) {
             'id' => $user->departemen->id,
             'name' => $user->departemen->name,
         ] : null,
+        'location' => $user->location ? [
+            'id' => $user->location->id,
+            'name' => $user->location->name,
+            'latitude' => $user->location->latitude,
+            'longitude' => $user->location->longitude,
+            'radius_km' => $user->location->radius_km,
+            'attendance_type' => $user->location->attendance_type,
+        ] : null,
     ], 200);
 })->middleware('auth:sanctum');
 
@@ -41,6 +49,10 @@ Route::get('/me', [App\Http\Controllers\Api\AuthController::class, 'me'])->middl
 
 // company
 Route::get('/company', [App\Http\Controllers\Api\CompanyController::class, 'show'])->middleware('auth:sanctum');
+
+// locations
+Route::get('/locations', [App\Http\Controllers\Api\LocationController::class, 'index'])->middleware('auth:sanctum');
+Route::get('/locations/{id}', [App\Http\Controllers\Api\LocationController::class, 'show'])->middleware('auth:sanctum');
 
 // checkin
 Route::post('/checkin', [App\Http\Controllers\Api\AttendanceController::class, 'checkin'])->middleware('auth:sanctum');

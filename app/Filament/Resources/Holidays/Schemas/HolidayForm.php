@@ -17,10 +17,10 @@ class HolidayForm
     {
         return $schema
             ->components([
-                Section::make('Holiday Information')
+                Section::make('Informasi Hari Libur')
                     ->schema([
                         DatePicker::make('date')
-                            ->label('Date')
+                            ->label('Tanggal')
                             ->required()
                             ->native(false)
                             ->unique(table: 'holidays', column: 'date', ignoreRecord: true)
@@ -31,25 +31,25 @@ class HolidayForm
                             ]),
 
                         TextInput::make('name')
-                            ->label('Name')
+                            ->label('Nama')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('e.g., Independence Day'),
+                            ->placeholder('Contoh: Hari Kemerdekaan'),
 
                         Select::make('type')
-                            ->label('Type')
+                            ->label('Tipe')
                             ->required()
                             ->options([
-                                Holiday::TYPE_NATIONAL => 'National',
-                                Holiday::TYPE_COMPANY => 'Company',
+                                Holiday::TYPE_NATIONAL => 'Nasional',
+                                Holiday::TYPE_COMPANY => 'Perusahaan',
                                 Holiday::TYPE_WEEKEND => 'Weekend',
                             ])
                             ->default(Holiday::TYPE_NATIONAL),
 
                         Toggle::make('is_official')
-                            ->label('Official Holiday')
+                            ->label('Hari Libur Resmi')
                             ->default(false)
-                            ->helperText('Check if this is an official government holiday'),
+                            ->helperText('Centang jika ini adalah hari libur resmi pemerintah'),
                     ])
                     ->columns(2),
             ]);

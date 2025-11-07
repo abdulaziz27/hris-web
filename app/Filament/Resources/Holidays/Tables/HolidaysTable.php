@@ -25,29 +25,34 @@ class HolidaysTable
         return $table
             ->columns([
                 TextColumn::make('date')
-                    ->label('Date')
+                    ->label('Tanggal')
                     ->date('d/m/Y')
                     ->sortable()
                     ->badge()
                     ->color('primary'),
 
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label('Nama')
                     ->searchable()
                     ->sortable(),
 
                 BadgeColumn::make('type')
-                    ->label('Type')
+                    ->label('Tipe')
                     ->colors([
                         'info' => Holiday::TYPE_NATIONAL,
                         'warning' => Holiday::TYPE_COMPANY,
                         'gray' => Holiday::TYPE_WEEKEND,
                     ])
-                    ->formatStateUsing(fn ($state) => ucfirst($state))
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        Holiday::TYPE_NATIONAL => 'Nasional',
+                        Holiday::TYPE_COMPANY => 'Perusahaan',
+                        Holiday::TYPE_WEEKEND => 'Weekend',
+                        default => ucfirst($state),
+                    })
                     ->sortable(),
 
                 IconColumn::make('is_official')
-                    ->label('Official')
+                    ->label('Resmi')
                     ->boolean()
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
@@ -55,14 +60,14 @@ class HolidaysTable
                     ->falseColor('gray'),
 
                 TextColumn::make('created_at')
-                    ->label('Created')
+                    ->label('Dibuat')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('year')
-                    ->label('Year')
+                    ->label('Tahun')
                     ->options(function () {
                         $years = DB::table('holidays')
                             ->selectRaw('YEAR(date) as year')
@@ -89,68 +94,68 @@ class HolidaysTable
                     }),
 
                 SelectFilter::make('type')
-                    ->label('Type')
+                    ->label('Tipe')
                     ->options([
-                        Holiday::TYPE_NATIONAL => 'National',
-                        Holiday::TYPE_COMPANY => 'Company',
+                        Holiday::TYPE_NATIONAL => 'Nasional',
+                        Holiday::TYPE_COMPANY => 'Perusahaan',
                         Holiday::TYPE_WEEKEND => 'Weekend',
                     ]),
 
                 SelectFilter::make('official_only')
-                    ->label('Official Only')
+                    ->label('Hanya Resmi')
                     ->options([
-                        '1' => 'Official Holidays Only',
+                        '1' => 'Hanya Hari Libur Resmi',
                     ])
                     ->query(fn (Builder $query, $state) => $state['value'] === '1' ? $query->where('is_official', true) : $query),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->label('Edit'),
+                    ->label('Ubah'),
             ])
             ->headerActions([
                 Action::make('generate_weekends')
-                    ->label('Generate Weekends')
+                    ->label('Generate Weekend')
                     ->icon('heroicon-o-calendar-days')
                     ->color('success')
                     ->form([
                         TextInput::make('year')
-                            ->label('Year')
+                            ->label('Tahun')
                             ->required()
                             ->numeric()
                             ->minValue(2020)
                             ->maxValue(2100)
                             ->default(now()->year),
                     ])
-                    ->modalHeading('Generate Weekend Holidays')
-                    ->modalDescription('This will generate all Saturdays and Sundays for the selected year as weekend holidays.')
+                    ->modalHeading('Generate Hari Libur Weekend')
+                    ->modalDescription('Ini akan menghasilkan semua hari Sabtu dan Minggu untuk tahun yang dipilih sebagai hari libur weekend.')
                     ->action(function (array $data) {
                         $result = WorkdayCalculator::generateWeekendForYear($data['year']);
 
                         \Filament\Notifications\Notification::make()
-                            ->title('Weekends generated successfully')
+                            ->title('Weekend berhasil di-generate')
                             ->success()
-                            ->body("Inserted: {$result['inserted']}, Skipped: {$result['skipped']}")
+                            ->body("Ditambahkan: {$result['inserted']}, Dilewati: {$result['skipped']}")
                             ->send();
                     }),
 
                 Action::make('quick_add_national')
-                    ->label('Quick Add National Holiday')
+                    ->label('Tambah Cepat Hari Libur Nasional')
                     ->icon('heroicon-o-plus-circle')
                     ->color('primary')
                     ->form([
                         DatePicker::make('date')
-                            ->label('Date')
+                            ->label('Tanggal')
                             ->required()
                             ->native(false)
                             ->unique(table: 'holidays', column: 'date'),
 
                         TextInput::make('name')
-                            ->label('Holiday Name')
+                            ->label('Nama Hari Libur')
                             ->required()
                             ->maxLength(255)
-                            ->placeholder('e.g., Independence Day'),
+                            ->placeholder('Contoh: Hari Kemerdekaan'),
                     ])
-                    ->modalHeading('Add National Holiday')
+                    ->modalHeading('Tambah Hari Libur Nasional')
                     ->action(function (array $data) {
                         Holiday::create([
                             'date' => $data['date'],
@@ -160,7 +165,7 @@ class HolidaysTable
                         ]);
 
                         \Filament\Notifications\Notification::make()
-                            ->title('National holiday added successfully')
+                            ->title('Hari libur nasional berhasil ditambahkan')
                             ->success()
                             ->send();
                     }),
@@ -168,10 +173,11 @@ class HolidaysTable
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->label('Hapus')
                         ->visible(fn () => auth()->user()->role === 'admin' || auth()->user()->role === 'hr'),
 
                     Action::make('set_official')
-                        ->label('Set as Official')
+                        ->label('Tandai sebagai Resmi')
                         ->icon('heroicon-o-check-badge')
                         ->color('success')
                         ->requiresConfirmation()
@@ -179,14 +185,14 @@ class HolidaysTable
                             $records->each->update(['is_official' => true]);
 
                             \Filament\Notifications\Notification::make()
-                                ->title('Holidays marked as official')
+                                ->title('Hari libur ditandai sebagai resmi')
                                 ->success()
                                 ->send();
                         })
                         ->visible(fn () => auth()->user()->role === 'admin' || auth()->user()->role === 'hr'),
 
                     Action::make('unset_official')
-                        ->label('Unset Official')
+                        ->label('Hapus Tanda Resmi')
                         ->icon('heroicon-o-x-circle')
                         ->color('warning')
                         ->requiresConfirmation()
@@ -194,7 +200,7 @@ class HolidaysTable
                             $records->each->update(['is_official' => false]);
 
                             \Filament\Notifications\Notification::make()
-                                ->title('Holidays unmarked as official')
+                                ->title('Tanda resmi hari libur dihapus')
                                 ->success()
                                 ->send();
                         })

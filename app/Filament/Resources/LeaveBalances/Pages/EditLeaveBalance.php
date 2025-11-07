@@ -14,6 +14,7 @@ class EditLeaveBalance extends EditRecord
     {
         return [
             DeleteAction::make()
+                ->label('Hapus')
                 ->visible(fn () => auth()->user()->role === 'admin' || auth()->user()->role === 'hr'),
         ];
     }

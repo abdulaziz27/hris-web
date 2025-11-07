@@ -33,7 +33,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // Load relationships
-        $user->load(['shiftKerja', 'departemen', 'jabatan']);
+        $user->load(['shiftKerja', 'departemen', 'jabatan', 'location']);
 
         $response = [
             'user' => new UserResource($user),
@@ -56,6 +56,14 @@ class AuthController extends Controller
             'department' => $user->departemen ? [
                 'id' => $user->departemen->id,
                 'name' => $user->departemen->name,
+            ] : null,
+            'location' => $user->location ? [
+                'id' => $user->location->id,
+                'name' => $user->location->name,
+                'latitude' => $user->location->latitude,
+                'longitude' => $user->location->longitude,
+                'radius_km' => $user->location->radius_km,
+                'attendance_type' => $user->location->attendance_type,
             ] : null,
         ];
 
