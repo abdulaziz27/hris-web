@@ -31,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             // ->brandLogo(asset('img/logo-hris.svg'))
             // ->darkModeBrandLogo(asset('img/logo-hris-dark.svg'))
             // ->brandLogoHeight('2rem')
-            ->favicon(asset('favicon.svg'))
+            ->favicon(asset('logo-hris.jpg'))
             ->colors([
                 'primary' => Color::Blue,
             ])
