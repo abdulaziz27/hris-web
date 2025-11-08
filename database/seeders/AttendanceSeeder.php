@@ -44,8 +44,8 @@ class AttendanceSeeder extends Seeder
                     'date' => $date->toDateString(),
                     'time_in' => $flowData['time_in']->format('H:i:s'),
                     'time_out' => $flowData['time_out']?->format('H:i:s'),
-                    'latlon_in' => fake()->latitude().','.fake()->longitude(),
-                    'latlon_out' => $flowData['time_out'] ? fake()->latitude().','.fake()->longitude() : null,
+                    'latlon_in' => $this->randomLatLon(),
+                    'latlon_out' => $flowData['time_out'] ? $this->randomLatLon() : null,
                     'status' => $flowData['status'],
                     'is_weekend' => $date->isWeekend(),
                     'is_holiday' => false,
@@ -143,5 +143,13 @@ class AttendanceSeeder extends Seeder
             'late_minutes' => 0,
             'early_leave_minutes' => $earlyLeave,
         ];
+    }
+
+    private function randomLatLon(): string
+    {
+        $lat = random_int(-90000000, 90000000) / 1_000_000;
+        $lon = random_int(-180000000, 180000000) / 1_000_000;
+
+        return number_format($lat, 6, '.', '').','.number_format($lon, 6, '.', '');
     }
 }
