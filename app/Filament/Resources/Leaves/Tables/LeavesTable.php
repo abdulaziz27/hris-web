@@ -28,11 +28,22 @@ class LeavesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query) {
+                return $query->with(['employee.location', 'leaveType', 'approver']);
+            })
             ->columns([
                 TextColumn::make('employee.name')
                     ->label('Karyawan')
                     ->sortable()
                     ->searchable(),
+
+                TextColumn::make('employee.location.name')
+                    ->label('Lokasi')
+                    ->sortable()
+                    ->searchable()
+                    ->placeholder('Tidak Ada Lokasi')
+                    ->badge()
+                    ->color('info'),
 
                 TextColumn::make('leaveType.name')
                     ->label('Tipe Cuti')

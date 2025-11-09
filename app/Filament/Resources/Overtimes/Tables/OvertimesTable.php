@@ -18,11 +18,22 @@ class OvertimesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query) {
+                return $query->with(['user.location', 'approvedBy']);
+            })
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Karyawan')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('user.location.name')
+                    ->label('Lokasi')
+                    ->sortable()
+                    ->searchable()
+                    ->placeholder('Tidak Ada Lokasi')
+                    ->badge()
+                    ->color('info'),
 
                 TextColumn::make('date')
                     ->label('Tanggal')

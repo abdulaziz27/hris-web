@@ -33,6 +33,9 @@ class AttendanceSeeder extends Seeder
                 ?? $user->shiftKerjas->first()
                 ?? $shifts->first();
 
+            // Get user's location (realistic data)
+            $locationId = $user->location_id;
+
             // Random status untuk variasi
             $statuses = ['on_time', 'late', 'on_time', 'early_leave', 'on_time'];
             $status = $statuses[array_rand($statuses)];
@@ -43,6 +46,7 @@ class AttendanceSeeder extends Seeder
             Attendance::create([
                 'user_id' => $user->id,
                 'shift_id' => $shift->id,
+                'location_id' => $locationId, // Add location from user
                 'date' => $date->toDateString(),
                 'time_in' => $flowData['time_in']->format('H:i:s'),
                 'time_out' => $flowData['time_out']?->format('H:i:s'),
