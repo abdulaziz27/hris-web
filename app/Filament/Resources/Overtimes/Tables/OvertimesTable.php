@@ -19,7 +19,7 @@ class OvertimesTable
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                return $query->with(['user.location', 'approvedBy']);
+                return $query->with(['user.location', 'approver']);
             })
             ->columns([
                 TextColumn::make('user.name')
@@ -90,7 +90,7 @@ class OvertimesTable
                         'rejected' => 'Ditolak',
                     }),
 
-                TextColumn::make('approvedBy.name')
+                TextColumn::make('approver.name')
                     ->label('Disetujui Oleh')
                     ->placeholder('Belum disetujui')
                     ->toggleable(isToggledHiddenByDefault: true),
