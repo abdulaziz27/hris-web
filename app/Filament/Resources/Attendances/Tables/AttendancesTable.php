@@ -17,6 +17,9 @@ class AttendancesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query) {
+                return $query->with(['user', 'shift', 'location']);
+            })
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Karyawan')
