@@ -23,7 +23,7 @@ class UserSeeder extends Seeder
         $locationIds = Location::pluck('id', 'name');
 
         $users = [
-            // Admin - di kantor pusat (Kebun Sawit Purwokerto Timur)
+            // Admin - di kantor pusat
             [
                 'name' => 'Admin User',
                 'email' => 'admin@admin.com',
@@ -32,7 +32,7 @@ class UserSeeder extends Seeder
                 'department' => 'Administrasi & Keuangan',
                 'departemen_id' => $departemenIds['Administrasi & Keuangan'] ?? null,
                 'jabatan_id' => $jabatanIds['Manager Operasional'] ?? null,
-                'location_id' => $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
+                'location_id' => $locationIds['Kantor Pusat'] ?? $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
                 'shift_name' => 'Shift Pagi',
                 'phone' => '+6281234567890',
             ],
@@ -49,20 +49,8 @@ class UserSeeder extends Seeder
                 'shift_name' => 'Shift Pagi',
                 'phone' => '+6281234567891',
             ],
-            // Pekerja di Kebun Sawit
-            [
-                'name' => 'John Doe',
-                'email' => 'john@company.com',
-                'role' => 'employee',
-                'position' => 'Pekerja Kebun',
-                'department' => 'Operasional Lapangan',
-                'departemen_id' => $departemenIds['Operasional Lapangan'] ?? null,
-                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
-                'location_id' => $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
-                'shift_name' => 'Shift Pagi',
-                'phone' => '+6281234567892',
-            ],
-            // Supervisor di Kebun Karet
+            // 13 Karyawan dengan variasi jabatan
+            // 1. Supervisor Lapangan
             [
                 'name' => 'Siti Nurhaliza',
                 'email' => 'siti@company.com',
@@ -73,22 +61,9 @@ class UserSeeder extends Seeder
                 'jabatan_id' => $jabatanIds['Supervisor Lapangan'] ?? null,
                 'location_id' => $locationIds['Kebun Karet Banyumas'] ?? null,
                 'shift_name' => 'Shift Pagi',
-                'phone' => '+6281234567893',
+                'phone' => '+6281234567892',
             ],
-            // Pekerja di Kebun Karet
-            [
-                'name' => 'Bob Johnson',
-                'email' => 'bob@company.com',
-                'role' => 'employee',
-                'position' => 'Pekerja Kebun',
-                'department' => 'Pemanenan & Pengolahan',
-                'departemen_id' => $departemenIds['Pemanenan & Pengolahan'] ?? null,
-                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
-                'location_id' => $locationIds['Kebun Karet Banyumas'] ?? null,
-                'shift_name' => 'Shift Siang',
-                'phone' => '+6281234567894',
-            ],
-            // Pekerja di Pembibitan
+            // 2. Supervisor Lapangan
             [
                 'name' => 'Ahmad Fauzi',
                 'email' => 'ahmad@company.com',
@@ -99,9 +74,9 @@ class UserSeeder extends Seeder
                 'jabatan_id' => $jabatanIds['Supervisor Lapangan'] ?? null,
                 'location_id' => $locationIds['Kebun Pembibitan Cilongok'] ?? null,
                 'shift_name' => 'Shift Pagi',
-                'phone' => '+6281234567895',
+                'phone' => '+6281234567893',
             ],
-            // Staff Administrasi di Kantor Pusat
+            // 3. Staff Administrasi
             [
                 'name' => 'Maria Clara',
                 'email' => 'maria@company.com',
@@ -110,11 +85,48 @@ class UserSeeder extends Seeder
                 'department' => 'Administrasi & Keuangan',
                 'departemen_id' => $departemenIds['Administrasi & Keuangan'] ?? null,
                 'jabatan_id' => $jabatanIds['Staff Administrasi'] ?? null,
-                'location_id' => $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
+                'location_id' => $locationIds['Kantor Pusat'] ?? $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
                 'shift_name' => 'Shift Flexible',
+                'phone' => '+6281234567894',
+            ],
+            // 4. Staff Administrasi
+            [
+                'name' => 'Rina Sari',
+                'email' => 'rina@company.com',
+                'role' => 'employee',
+                'position' => 'Staff Administrasi',
+                'department' => 'Administrasi & Keuangan',
+                'departemen_id' => $departemenIds['Administrasi & Keuangan'] ?? null,
+                'jabatan_id' => $jabatanIds['Staff Administrasi'] ?? null,
+                'location_id' => $locationIds['Kantor Pusat'] ?? $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
+                'shift_name' => 'Shift Flexible',
+                'phone' => '+6281234567895',
+            ],
+            // 5-15. Pekerja Kebun (11 orang)
+            [
+                'name' => 'John Doe',
+                'email' => 'john@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Operasional Lapangan',
+                'departemen_id' => $departemenIds['Operasional Lapangan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
+                'shift_name' => 'Shift Pagi',
                 'phone' => '+6281234567896',
             ],
-            // Pekerja Kebun di Pembibitan
+            [
+                'name' => 'Bob Johnson',
+                'email' => 'bob@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Pemanenan & Pengolahan',
+                'departemen_id' => $departemenIds['Pemanenan & Pengolahan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Karet Banyumas'] ?? null,
+                'shift_name' => 'Shift Siang',
+                'phone' => '+6281234567897',
+            ],
             [
                 'name' => 'Dewi Lestari',
                 'email' => 'dewi@company.com',
@@ -125,7 +137,103 @@ class UserSeeder extends Seeder
                 'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
                 'location_id' => $locationIds['Kebun Pembibitan Cilongok'] ?? null,
                 'shift_name' => 'Shift Pagi',
-                'phone' => '+6281234567897',
+                'phone' => '+6281234567898',
+            ],
+            [
+                'name' => 'Ahmad Kurniawan',
+                'email' => 'ahmad.k@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Operasional Lapangan',
+                'departemen_id' => $departemenIds['Operasional Lapangan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Sawit Ajibarang'] ?? null,
+                'shift_name' => 'Shift Pagi',
+                'phone' => '+6281234567899',
+            ],
+            [
+                'name' => 'Bambang Sutrisno',
+                'email' => 'bambang@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Pemanenan & Pengolahan',
+                'departemen_id' => $departemenIds['Pemanenan & Pengolahan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Kelapa Sawit Sumbang'] ?? null,
+                'shift_name' => 'Shift Siang',
+                'phone' => '+6281234567900',
+            ],
+            [
+                'name' => 'Cahyo Prasetyo',
+                'email' => 'cahyo@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Operasional Lapangan',
+                'departemen_id' => $departemenIds['Operasional Lapangan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
+                'shift_name' => 'Shift Malam',
+                'phone' => '+6281234567901',
+            ],
+            [
+                'name' => 'Dedi Kurniawan',
+                'email' => 'dedi@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Pemanenan & Pengolahan',
+                'departemen_id' => $departemenIds['Pemanenan & Pengolahan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Karet Banyumas'] ?? null,
+                'shift_name' => 'Shift Pagi',
+                'phone' => '+6281234567902',
+            ],
+            [
+                'name' => 'Eko Wijaya',
+                'email' => 'eko@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Pemeliharaan Lingkungan',
+                'departemen_id' => $departemenIds['Pemeliharaan Lingkungan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Pembibitan Cilongok'] ?? null,
+                'shift_name' => 'Shift Siang',
+                'phone' => '+6281234567903',
+            ],
+            [
+                'name' => 'Fajar Hidayat',
+                'email' => 'fajar@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Operasional Lapangan',
+                'departemen_id' => $departemenIds['Operasional Lapangan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Sawit Ajibarang'] ?? null,
+                'shift_name' => 'Shift Pagi',
+                'phone' => '+6281234567904',
+            ],
+            [
+                'name' => 'Gunawan Setiawan',
+                'email' => 'gunawan@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Pemanenan & Pengolahan',
+                'departemen_id' => $departemenIds['Pemanenan & Pengolahan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Kelapa Sawit Sumbang'] ?? null,
+                'shift_name' => 'Shift Malam',
+                'phone' => '+6281234567905',
+            ],
+            [
+                'name' => 'Hadi Santoso',
+                'email' => 'hadi@company.com',
+                'role' => 'employee',
+                'position' => 'Pekerja Kebun',
+                'department' => 'Operasional Lapangan',
+                'departemen_id' => $departemenIds['Operasional Lapangan'] ?? null,
+                'jabatan_id' => $jabatanIds['Pekerja Kebun'] ?? null,
+                'location_id' => $locationIds['Kebun Sawit Purwokerto Timur'] ?? null,
+                'shift_name' => 'Shift Pagi',
+                'phone' => '+6281234567906',
             ],
         ];
 
@@ -149,6 +257,6 @@ class UserSeeder extends Seeder
             );
         }
 
-        $this->command->info('8 users created/updated successfully with locations assigned.');
+        $this->command->info('15 users created/updated successfully (1 Admin + 1 Manager + 13 Employees) with locations assigned.');
     }
 }

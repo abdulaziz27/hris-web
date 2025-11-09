@@ -38,13 +38,13 @@ class DatabaseSeeder extends Seeder
             AttendanceSeeder::class,
 
             // Bulk employee seeder (must run after UserSeeder)
-            EmployeeBulkSeeder::class,
+            // EmployeeBulkSeeder::class, // DISABLED - Using only 15 employees from UserSeeder
 
             // Dashboard enrichment seeder (must run after AttendanceSeeder)
-            DashboardAttendanceSeeder::class,
+            // DashboardAttendanceSeeder::class, // DISABLED - Using only 10 attendance records from AttendanceSeeder
 
             // Dashboard statistics seeder (must run after EmployeeBulkSeeder)
-            DashboardStatsSeeder::class,
+            // DashboardStatsSeeder::class, // DISABLED - Using only 10 leave and 10 overtime records
         ]);
     }
 }

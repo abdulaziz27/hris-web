@@ -62,8 +62,8 @@ class LocationForm
                                     ->default(0.5)
                                     ->step(0.1)
                                     ->minValue(0.1)
-                                    ->maxValue(50)
-                                    ->helperText('Radius validasi absensi dalam kilometer'),
+                                    ->maxValue(1000)
+                                    ->helperText('Radius validasi absensi dalam kilometer (maksimal 1000km untuk testing)'),
                             ]),
 
                         Toggle::make('is_active')

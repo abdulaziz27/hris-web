@@ -174,13 +174,18 @@ class AttendanceController extends Controller
 
         $currentUser = $request->user();
 
-        $query = Attendance::where('user_id', $currentUser->id);
+        // Admin dan HR bisa lihat semua attendance, user biasa hanya miliknya sendiri
+        $query = Attendance::query();
+        
+        if ($currentUser->role !== 'admin' && $currentUser->role !== 'hr' && $currentUser->role !== 'manager') {
+            $query->where('user_id', $currentUser->id);
+        }
 
         if ($date) {
             $query->where('date', $date);
         }
 
-        $attendance = $query->get();
+        $attendance = $query->orderBy('date', 'desc')->get();
 
         return response([
             'message' => 'Success',

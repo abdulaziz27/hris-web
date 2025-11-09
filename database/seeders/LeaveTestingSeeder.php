@@ -45,8 +45,8 @@ class LeaveTestingSeeder extends Seeder
             }
         }
 
-        // Create realistic pending leave requests (only employees, not admin/manager)
-        $employeeUsers = $users->where('role', 'employee')->take(5);
+        // Create 10 leave requests (only employees, not admin/manager)
+        $employeeUsers = $users->where('role', 'employee')->take(10);
         $manager = $users->whereIn('role', ['manager', 'admin'])->first() ?? $users->first();
 
         $realLeaveReasons = [
@@ -60,72 +60,58 @@ class LeaveTestingSeeder extends Seeder
             'Cuti untuk merawat anak yang sedang sakit',
             'Izin cuti untuk menghadiri pernikahan saudara',
             'Cuti tahunan untuk refreshing dan istirahat',
-            'Izin cuti untuk mengurus kepindahan rumah',
-            'Cuti untuk mengikuti acara keluarga di luar kota',
-            'Izin cuti untuk mengantar anak daftar sekolah',
-            'Cuti tahunan untuk liburan bersama keluarga',
-            'Izin cuti karena ada acara adat keluarga',
         ];
 
+        $leaveCount = 0;
         foreach ($employeeUsers as $user) {
+            if ($leaveCount >= 10) {
+                break;
+            }
+            
             $leaveType = $leaveTypes->random();
+            $statuses = ['pending', 'approved', 'approved', 'pending', 'approved'];
+            $status = $statuses[array_rand($statuses)];
 
-            // Pending leave - dengan alasan real
             $startDate = \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 25));
             $totalDays = rand(1, 5);
             $endDate = (clone $startDate)->addDays($totalDays - 1);
 
-            Leave::create([
-                'employee_id' => $user->id,
-                'leave_type_id' => $leaveType->id,
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-                'total_days' => $totalDays,
-                'reason' => $realLeaveReasons[array_rand($realLeaveReasons)],
-                'status' => 'pending',
-                'created_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
-                'updated_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
-            ]);
-
-            // Approved leave - dengan alasan real (past dates in 2025)
-            $approvedMonth = rand(1, 12);
-            $approvedDay = rand(1, 20);
-            $approvedStartDate = \Carbon\Carbon::create(2025, $approvedMonth, $approvedDay)->subDays(rand(5, 15));
-            // Ensure it's still in 2025
-            if ($approvedStartDate->year < 2025) {
-                $approvedStartDate = \Carbon\Carbon::create(2025, 1, rand(1, 15));
+            if ($status === 'approved') {
+                $approvedAt = (clone $startDate)->subDays(rand(2, 5));
+                if ($approvedAt->year < 2025) {
+                    $approvedAt = \Carbon\Carbon::create(2025, 1, rand(1, 10));
+                }
+                
+                Leave::create([
+                    'employee_id' => $user->id,
+                    'leave_type_id' => $leaveType->id,
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                    'total_days' => $totalDays,
+                    'reason' => $realLeaveReasons[array_rand($realLeaveReasons)],
+                    'status' => 'approved',
+                    'approved_by' => $manager->id,
+                    'approved_at' => $approvedAt,
+                    'created_at' => $approvedAt->subDays(rand(1, 3)),
+                    'updated_at' => $approvedAt,
+                ]);
+            } else {
+                Leave::create([
+                    'employee_id' => $user->id,
+                    'leave_type_id' => $leaveType->id,
+                    'start_date' => $startDate->toDateString(),
+                    'end_date' => $endDate->toDateString(),
+                    'total_days' => $totalDays,
+                    'reason' => $realLeaveReasons[array_rand($realLeaveReasons)],
+                    'status' => 'pending',
+                    'created_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
+                    'updated_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
+                ]);
             }
-            $approvedTotalDays = rand(1, 3);
-            $approvedEndDate = (clone $approvedStartDate)->addDays($approvedTotalDays - 1);
-            $approvedAt = (clone $approvedStartDate)->subDays(rand(2, 5));
-            // Ensure approved_at is not before 2025
-            if ($approvedAt->year < 2025) {
-                $approvedAt = \Carbon\Carbon::create(2025, 1, rand(1, 10));
-            }
-
-            $approvedReasons = [
-                'Cuti tahunan untuk liburan keluarga',
-                'Izin cuti untuk keperluan pribadi',
-                'Cuti sakit karena demam',
-                'Izin cuti untuk mengurus dokumen penting',
-                'Cuti untuk menghadiri acara keluarga',
-            ];
-
-            Leave::create([
-                'employee_id' => $user->id,
-                'leave_type_id' => $leaveType->id,
-                'start_date' => $approvedStartDate->toDateString(),
-                'end_date' => $approvedEndDate->toDateString(),
-                'total_days' => $approvedTotalDays,
-                'reason' => $approvedReasons[array_rand($approvedReasons)],
-                'status' => 'approved',
-                'approved_by' => $manager->id,
-                'approved_at' => $approvedAt,
-                'created_at' => $approvedAt->subDays(rand(1, 3)),
-                'updated_at' => $approvedAt,
-            ]);
+            
+            $leaveCount++;
         }
 
-        $this->command->info('Leave testing data created successfully.');
+        $this->command->info('✅ Created 10 leave requests successfully.');
     }
 }

@@ -52,11 +52,12 @@ class LeaveForm
                                 self::calculateTotalDays($get, $set);
                             }),
 
-                        Select::make('total_days')
+                        \Filament\Forms\Components\TextInput::make('total_days')
                             ->label('Total Hari')
                             ->disabled()
                             ->dehydrated()
-                            ->default(1),
+                            ->default(1)
+                            ->numeric(),
 
                         Textarea::make('reason')
                             ->label('Alasan')

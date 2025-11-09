@@ -27,10 +27,10 @@ class OvertimeSeeder extends Seeder
         // Get manager for approval
         $manager = User::whereIn('role', ['manager', 'admin'])->first() ?? $employees->first();
 
-        // Generate 2 pending overtime requests for employees
-        $pendingEmployees = $employees->random(min(2, $employees->count()));
+        // Generate 10 overtime requests for employees
+        $selectedEmployees = $employees->random(min(10, $employees->count()));
 
-        $pendingReasons = [
+        $overtimeReasons = [
             'Menyelesaikan pekerjaan urgent yang tertunda karena hujan',
             'Menyelesaikan target pemanenan yang belum selesai',
             'Maintenance peralatan kebun yang rusak',
@@ -38,9 +38,14 @@ class OvertimeSeeder extends Seeder
             'Menyelesaikan pekerjaan yang memerlukan perhatian segera',
             'Menyelesaikan target produksi harian yang belum tercapai',
             'Menyelesaikan pekerjaan administrasi yang tertunda',
+            'Menyelesaikan pekerjaan yang memerlukan koordinasi tim',
+            'Menyelesaikan target panen yang harus selesai hari ini',
+            'Menyelesaikan perbaikan mesin yang mendesak',
         ];
 
-        foreach ($pendingEmployees as $employee) {
+        $statuses = ['pending', 'approved', 'approved', 'pending', 'approved', 'approved', 'pending', 'approved', 'pending', 'approved'];
+
+        foreach ($selectedEmployees as $index => $employee) {
             // Random date in 2025 (past or near future)
             $month = rand(1, 12);
             $day = rand(1, 28);
@@ -55,18 +60,20 @@ class OvertimeSeeder extends Seeder
             $durationHours = rand(1, 4);
             $endTime = (clone $startTime)->addHours($durationHours);
 
+            $status = $statuses[$index % count($statuses)];
+
             Overtime::create([
                 'user_id' => $employee->id,
                 'date' => $date->toDateString(),
                 'start_time' => $startTime->format('H:i:s'),
                 'end_time' => $endTime->format('H:i:s'),
-                'reason' => $pendingReasons[array_rand($pendingReasons)],
-                'status' => 'pending',
+                'reason' => $overtimeReasons[array_rand($overtimeReasons)],
+                'status' => $status,
                 'created_at' => $date->subDays(rand(1, 3)),
                 'updated_at' => $date,
             ]);
         }
 
-        $this->command->info('✅ Created 2 pending overtime requests for employees (2025).');
+        $this->command->info('✅ Created 10 overtime requests for employees (2025).');
     }
 }

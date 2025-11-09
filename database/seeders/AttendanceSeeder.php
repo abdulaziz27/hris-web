@@ -24,38 +24,39 @@ class AttendanceSeeder extends Seeder
 
         Attendance::query()->delete();
 
-        $flowTypes = ['on_time', 'late', 'absent', 'early_leave'];
-        $users = $users->take(max(1, intdiv(20, count($flowTypes))));
-
+        // Generate 10 attendance records
+        $employeeUsers = $users->where('role', 'employee')->take(10);
         $recordIndex = 0;
 
-        foreach ($users as $user) {
+        foreach ($employeeUsers as $user) {
             $shift = $user->shiftKerja
                 ?? $user->shiftKerjas->first()
                 ?? $shifts->first();
 
-            foreach ($flowTypes as $flowType) {
-                $date = Carbon::today()->subDays($recordIndex);
-                $flowData = $this->generateFlowData($shift, $date, $flowType);
+            // Random status untuk variasi
+            $statuses = ['on_time', 'late', 'on_time', 'early_leave', 'on_time'];
+            $status = $statuses[array_rand($statuses)];
+            
+            $date = Carbon::today()->subDays($recordIndex);
+            $flowData = $this->generateFlowData($shift, $date, $status);
 
-                Attendance::create([
-                    'user_id' => $user->id,
-                    'shift_id' => $shift->id,
-                    'date' => $date->toDateString(),
-                    'time_in' => $flowData['time_in']->format('H:i:s'),
-                    'time_out' => $flowData['time_out']?->format('H:i:s'),
-                    'latlon_in' => $this->randomLatLon(),
-                    'latlon_out' => $flowData['time_out'] ? $this->randomLatLon() : null,
-                    'status' => $flowData['status'],
-                    'is_weekend' => $date->isWeekend(),
-                    'is_holiday' => false,
-                    'holiday_work' => false,
-                    'late_minutes' => $flowData['late_minutes'],
-                    'early_leave_minutes' => $flowData['early_leave_minutes'],
-                ]);
+            Attendance::create([
+                'user_id' => $user->id,
+                'shift_id' => $shift->id,
+                'date' => $date->toDateString(),
+                'time_in' => $flowData['time_in']->format('H:i:s'),
+                'time_out' => $flowData['time_out']?->format('H:i:s'),
+                'latlon_in' => $this->randomLatLon(),
+                'latlon_out' => $flowData['time_out'] ? $this->randomLatLon() : null,
+                'status' => $flowData['status'],
+                'is_weekend' => $date->isWeekend(),
+                'is_holiday' => false,
+                'holiday_work' => false,
+                'late_minutes' => $flowData['late_minutes'],
+                'early_leave_minutes' => $flowData['early_leave_minutes'],
+            ]);
 
-                $recordIndex++;
-            }
+            $recordIndex++;
         }
     }
 
