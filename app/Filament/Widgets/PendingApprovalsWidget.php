@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Leave;
+use App\Models\Location;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -15,19 +16,43 @@ class PendingApprovalsWidget extends BaseWidget
 
     protected static ?int $sort = 4;
 
+    public ?int $locationFilter = null;
+
+    public function getHeading(): ?string
+    {
+        $locationName = $this->getLocationName();
+        
+        if ($locationName) {
+            return "Leave Menunggu Persetujuan - {$locationName}";
+        }
+
+        return 'Leave Menunggu Persetujuan';
+    }
+
     public function table(Table $table): Table
     {
+        $query = Leave::with(['employee:id,name,location_id', 'employee.location:id,name'])
+            ->where('status', 'pending')
+            ->latest('created_at');
+
+        if ($this->locationFilter) {
+            $query->whereHas('employee', function ($q) {
+                $q->where('location_id', $this->locationFilter);
+            });
+        }
+
         return $table
-            ->query(
-                Leave::with(['employee:id,name'])
-                    ->where('status', 'pending')
-                    ->latest('created_at')
-                    ->limit(10)
-            )
+            ->query($query->limit(10))
             ->columns([
                 TextColumn::make('employee.name')
                     ->label('Karyawan')
                     ->searchable(),
+
+                TextColumn::make('employee.location.name')
+                    ->label('Lokasi')
+                    ->badge()
+                    ->color('info')
+                    ->visible(! $this->locationFilter), // Hide location column when filter is active
 
                 TextColumn::make('start_date')
                     ->label('Mulai')
@@ -71,5 +96,14 @@ class PendingApprovalsWidget extends BaseWidget
                     }),
             ])
             ->paginated(false);
+    }
+
+    private function getLocationName(): ?string
+    {
+        if (! $this->locationFilter) {
+            return null;
+        }
+
+        return Location::find($this->locationFilter)?->name;
     }
 }

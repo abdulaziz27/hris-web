@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Attendance;
+use App\Models\Location;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -15,14 +16,30 @@ class LatestAttendanceWidget extends BaseWidget
 
     protected static ?int $sort = 3;
 
+    public ?int $locationFilter = null;
+
+    public function getHeading(): ?string
+    {
+        $locationName = $this->getLocationName();
+        
+        if ($locationName) {
+            return "Absensi Terbaru - {$locationName}";
+        }
+
+        return 'Absensi Terbaru';
+    }
+
     public function table(Table $table): Table
     {
+        $query = Attendance::with(['user:id,name,position,location_id', 'location:id,name'])
+            ->latest('created_at');
+
+        if ($this->locationFilter) {
+            $query->where('location_id', $this->locationFilter);
+        }
+
         return $table
-            ->query(
-                Attendance::with(['user:id,name,position'])
-                    ->latest('created_at')
-                    ->limit(10)
-            )
+            ->query($query->limit(10))
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Nama Karyawan')
@@ -30,6 +47,12 @@ class LatestAttendanceWidget extends BaseWidget
 
                 TextColumn::make('user.position')
                     ->label('Jabatan'),
+
+                TextColumn::make('location.name')
+                    ->label('Lokasi')
+                    ->badge()
+                    ->color('info')
+                    ->visible(! $this->locationFilter), // Hide location column when filter is active
 
                 TextColumn::make('date')
                     ->label('Tanggal')
@@ -65,5 +88,14 @@ class LatestAttendanceWidget extends BaseWidget
                     }),
             ])
             ->paginated(false);
+    }
+
+    private function getLocationName(): ?string
+    {
+        if (! $this->locationFilter) {
+            return null;
+        }
+
+        return Location::find($this->locationFilter)?->name;
     }
 }

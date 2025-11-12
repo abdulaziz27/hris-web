@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Departemen;
 use App\Models\Jabatan;
 use App\Models\Leave;
+use App\Models\Location;
 use App\Models\Overtime;
 use App\Models\ShiftKerja;
 use App\Models\User;
@@ -18,11 +19,15 @@ class DashboardStatsWidget extends BaseWidget
 
     protected static ?int $sort = 1;
 
+    public ?int $locationFilter = null;
+
     protected function getStats(): array
     {
+        $locationName = $this->getLocationName();
+
         return [
-            Stat::make('Total Pegawai', User::count())
-                ->description('Jumlah seluruh pegawai')
+            Stat::make('Total Pegawai', $this->getTotalUsers())
+                ->description($locationName ? "Pegawai di {$locationName}" : 'Jumlah seluruh pegawai')
                 ->descriptionIcon('heroicon-m-users')
                 ->color('primary'),
 
@@ -42,45 +47,84 @@ class DashboardStatsWidget extends BaseWidget
                 ->color('warning'),
 
             Stat::make('Overtime Disetujui', $this->getApprovedOvertimeThisMonth())
-                ->description('Bulan ini yang disetujui')
+                ->description($locationName ? "Bulan ini - {$locationName}" : 'Bulan ini yang disetujui')
                 ->descriptionIcon('heroicon-m-plus-circle')
                 ->color('success'),
 
             Stat::make('Cuti Disetujui', $this->getApprovedLeaveThisMonth())
-                ->description('Bulan ini yang disetujui')
+                ->description($locationName ? "Bulan ini - {$locationName}" : 'Bulan ini yang disetujui')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success'),
 
             Stat::make('Absensi Lengkap', $this->getCompleteAttendanceThisMonth())
-                ->description('Masuk & keluar bulan ini')
+                ->description($locationName ? "Masuk & keluar - {$locationName}" : 'Masuk & keluar bulan ini')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('primary'),
         ];
     }
 
+    private function getTotalUsers(): int
+    {
+        $query = User::query();
+
+        if ($this->locationFilter) {
+            $query->where('location_id', $this->locationFilter);
+        }
+
+        return $query->count();
+    }
+
     private function getApprovedOvertimeThisMonth(): int
     {
-        return Overtime::where('status', 'approved')
+        $query = Overtime::where('status', 'approved')
             ->whereMonth('date', now()->month)
-            ->whereYear('date', now()->year)
-            ->count();
+            ->whereYear('date', now()->year);
+
+        if ($this->locationFilter) {
+            $query->whereHas('user', function ($q) {
+                $q->where('location_id', $this->locationFilter);
+            });
+        }
+
+        return $query->count();
     }
 
     private function getApprovedLeaveThisMonth(): int
     {
-        return Leave::where('status', 'approved')
+        $query = Leave::where('status', 'approved')
             ->whereNotNull('approved_at')
             ->whereMonth('approved_at', now()->month)
-            ->whereYear('approved_at', now()->year)
-            ->count();
+            ->whereYear('approved_at', now()->year);
+
+        if ($this->locationFilter) {
+            $query->whereHas('employee', function ($q) {
+                $q->where('location_id', $this->locationFilter);
+            });
+        }
+
+        return $query->count();
     }
 
     private function getCompleteAttendanceThisMonth(): int
     {
-        return Attendance::whereNotNull('time_in')
+        $query = Attendance::whereNotNull('time_in')
             ->whereNotNull('time_out')
             ->whereMonth('date', now()->month)
-            ->whereYear('date', now()->year)
-            ->count();
+            ->whereYear('date', now()->year);
+
+        if ($this->locationFilter) {
+            $query->where('location_id', $this->locationFilter);
+        }
+
+        return $query->count();
+    }
+
+    private function getLocationName(): ?string
+    {
+        if (! $this->locationFilter) {
+            return null;
+        }
+
+        return Location::find($this->locationFilter)?->name;
     }
 }

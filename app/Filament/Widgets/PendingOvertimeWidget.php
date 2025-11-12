@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Location;
 use App\Models\Overtime;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -13,19 +14,43 @@ class PendingOvertimeWidget extends BaseWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    public ?int $locationFilter = null;
+
+    public function getHeading(): ?string
+    {
+        $locationName = $this->getLocationName();
+        
+        if ($locationName) {
+            return "Overtime Menunggu Persetujuan - {$locationName}";
+        }
+
+        return 'Overtime Menunggu Persetujuan';
+    }
+
     public function table(Table $table): Table
     {
+        $query = Overtime::with(['user:id,name,location_id', 'user.location:id,name'])
+            ->where('status', 'pending')
+            ->latest('created_at');
+
+        if ($this->locationFilter) {
+            $query->whereHas('user', function ($q) {
+                $q->where('location_id', $this->locationFilter);
+            });
+        }
+
         return $table
-            ->query(
-                Overtime::with(['user:id,name'])
-                    ->where('status', 'pending')
-                    ->latest('created_at')
-                    ->limit(10)
-            )
+            ->query($query->limit(10))
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Karyawan')
                     ->searchable(),
+
+                TextColumn::make('user.location.name')
+                    ->label('Lokasi')
+                    ->badge()
+                    ->color('info')
+                    ->visible(! $this->locationFilter), // Hide location column when filter is active
 
                 TextColumn::make('date')
                     ->label('Tanggal')
@@ -58,5 +83,14 @@ class PendingOvertimeWidget extends BaseWidget
                     ->since(),
             ])
             ->paginated(false);
+    }
+
+    private function getLocationName(): ?string
+    {
+        if (! $this->locationFilter) {
+            return null;
+        }
+
+        return Location::find($this->locationFilter)?->name;
     }
 }
