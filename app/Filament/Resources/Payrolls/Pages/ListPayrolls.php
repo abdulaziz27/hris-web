@@ -333,7 +333,7 @@ class ListPayrolls extends ListRecords
                     }
 
                     $notificationType = count($errors) > 0 ? 'warning' : 'success';
-                    
+
                     Notification::make()
                         ->title('Generate Payroll Selesai')
                         ->{$notificationType}()

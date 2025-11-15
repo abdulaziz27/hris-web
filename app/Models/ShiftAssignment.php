@@ -39,9 +39,20 @@ class ShiftAssignment extends Model
 
     /**
      * Scope: Get assignments for a specific date
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param \Carbon\Carbon|string $date Date in location timezone (Carbon instance or date string Y-m-d)
      */
     public function scopeForDate($query, $date)
     {
+        // ✅ Ensure we use date string to avoid timezone issues
+        // whereDate() will compare date part only, which is what we want
+        if ($date instanceof \Carbon\Carbon) {
+            // Use toDateString() to get date in the Carbon instance's timezone
+            return $query->whereDate('date', $date->toDateString());
+        }
+        
+        // If it's already a string, use it directly
         return $query->whereDate('date', $date);
     }
 

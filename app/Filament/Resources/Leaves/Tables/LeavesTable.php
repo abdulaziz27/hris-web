@@ -166,10 +166,10 @@ class LeavesTable
                             DB::beginTransaction();
 
                             // Recalculate total days to ensure consistency with holidays
-                            $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays(
-                                Carbon::parse($record->start_date),
-                                Carbon::parse($record->end_date)
-                            );
+                            // Parse dates as date-only in app timezone to avoid timezone shift
+                            $startDate = Carbon::createFromFormat('Y-m-d', $record->start_date->format('Y-m-d'), config('app.timezone'))->startOfDay();
+                            $endDate = Carbon::createFromFormat('Y-m-d', $record->end_date->format('Y-m-d'), config('app.timezone'))->startOfDay();
+                            $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays($startDate, $endDate);
 
                             $year = $record->start_date->year;
                             $leaveBalance = LeaveBalance::where('employee_id', $record->employee_id)

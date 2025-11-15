@@ -9,6 +9,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Contracts\View\View;
 
 class PendingApprovalsWidget extends BaseWidget
 {
@@ -18,9 +19,76 @@ class PendingApprovalsWidget extends BaseWidget
 
     protected static ?int $sort = 4;
 
+    protected static bool $isLazy = true;
+
+    public function mount(): void
+    {
+        // Initialize table early in mount() to prevent view from accessing uninitialized property
+        $this->ensureTableInitialized();
+    }
+
+    public function hydrate(): void
+    {
+        // Ensure table is initialized on hydration (when Livewire updates)
+        $this->ensureTableInitialized();
+    }
+
+    public function bootedInteractsWithTable(): void
+    {
+        // Ensure table is initialized before parent method tries to access it
+        $this->ensureTableInitialized();
+        
+        parent::bootedInteractsWithTable();
+    }
+
+    public function getTable(): Table
+    {
+        // Ensure table is always initialized
+        $this->ensureTableInitialized();
+        return $this->table;
+    }
+
+    /**
+     * Override render to ensure table is initialized before view is rendered
+     */
+    public function render(): View
+    {
+        // CRITICAL: Initialize table before view tries to access it
+        $this->ensureTableInitialized();
+        
+        return parent::render();
+    }
+
+    /**
+     * Magic method to intercept property access and ensure table is initialized
+     */
+    public function __get($property): mixed
+    {
+        if ($property === 'table') {
+            $this->ensureTableInitialized();
+            return $this->table;
+        }
+        
+        return parent::__get($property);
+    }
+
+    /**
+     * Ensure table property is initialized
+     */
+    private function ensureTableInitialized(): void
+    {
+        try {
+            // Try to access table property - if it throws error, it's not initialized
+            $test = $this->table;
+        } catch (\Error $e) {
+            // Property not initialized yet, initialize it now
+            $this->table = $this->table($this->makeTable());
+        }
+    }
+
     public function table(Table $table): Table
     {
-        $pageFilters = $this->pageFilters ?? [];
+        $pageFilters = $this->getPageFiltersSafe();
         $locationId = $pageFilters['location'] ?? null;
         $locationId = $locationId ? (int) $locationId : null; // Ensure it's integer or null
         $startDate = $pageFilters['start_date'] ?? null;
@@ -153,5 +221,19 @@ class PendingApprovalsWidget extends BaseWidget
         }
 
         return '';
+    }
+
+    private function getPageFiltersSafe(): array
+    {
+        try {
+            if (method_exists($this, 'getPageFilters')) {
+                return $this->getPageFilters() ?? [];
+            } elseif (property_exists($this, 'pageFilters')) {
+                return is_array($this->pageFilters ?? null) ? $this->pageFilters : [];
+            }
+        } catch (\Exception $e) {
+            // If pageFilters is not initialized yet, return empty array
+        }
+        return [];
     }
 }

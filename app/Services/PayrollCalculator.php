@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Attendance;
 use App\Models\User;
+use App\Services\TimezoneService;
 use App\Support\WorkdayCalculator;
 use Carbon\Carbon;
 
@@ -38,11 +39,29 @@ class PayrollCalculator
 
     /**
      * Calculate total present days (include weekend kerja)
+     * 
+     * @param int $userId
+     * @param Carbon $start Start date (should be in location timezone)
+     * @param Carbon $end End date (should be in location timezone)
+     * @param int|null $locationId Optional location ID for timezone-aware query
      */
-    public static function calculatePresentDays(int $userId, Carbon $start, Carbon $end): int
+    public static function calculatePresentDays(int $userId, Carbon $start, Carbon $end, ?int $locationId = null): int
     {
+        // ✅ Convert start/end ke timezone lokasi untuk query yang akurat
+        if ($locationId) {
+            $locationTimezone = TimezoneService::getLocationTimezone($locationId);
+            $startInLocation = $start->copy()->setTimezone($locationTimezone);
+            $endInLocation = $end->copy()->setTimezone($locationTimezone);
+        } else {
+            $startInLocation = $start;
+            $endInLocation = $end;
+        }
+        
         return Attendance::where('user_id', $userId)
-            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->whereBetween('date', [
+                $startInLocation->toDateString(), 
+                $endInLocation->toDateString()
+            ])
             ->whereNotNull('time_in') // Hanya yang sudah check-in
             ->count();
     }
@@ -193,8 +212,8 @@ class PayrollCalculator
         // Allow nilai_hk = 0 (akan diisi nanti, tidak throw exception)
         // Salary fields akan dihitung sebagai 0 jika nilai_hk = 0
 
-        // Calculate present days
-        $presentDays = self::calculatePresentDays($userId, $start, $end);
+        // Calculate present days (with location timezone awareness)
+        $presentDays = self::calculatePresentDays($userId, $start, $end, $user->location_id ?? null);
 
         // Calculate basic salary from nilai_hk × standard_workdays (untuk informasi/reporting)
         // If nilai_hk = 0, basic_salary = 0

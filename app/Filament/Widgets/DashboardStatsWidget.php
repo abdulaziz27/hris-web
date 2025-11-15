@@ -25,7 +25,7 @@ class DashboardStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $pageFilters = $this->pageFilters ?? [];
+        $pageFilters = $this->getPageFiltersSafe();
         $locationId = $pageFilters['location'] ?? null;
         $locationId = $locationId ? (int) $locationId : null; // Ensure it's integer or null
         $startDate = $pageFilters['start_date'] ?? null;
@@ -187,5 +187,19 @@ class DashboardStatsWidget extends BaseWidget
     {
         $parts = array_filter([$locationName, $dateRangeDescription]);
         return !empty($parts) ? implode(' - ', $parts) : 'Masuk & keluar bulan ini';
+    }
+
+    private function getPageFiltersSafe(): array
+    {
+        try {
+            if (method_exists($this, 'getPageFilters')) {
+                return $this->getPageFilters() ?? [];
+            } elseif (property_exists($this, 'pageFilters')) {
+                return is_array($this->pageFilters ?? null) ? $this->pageFilters : [];
+            }
+        } catch (\Exception $e) {
+            // If pageFilters is not initialized yet, return empty array
+        }
+        return [];
     }
 }

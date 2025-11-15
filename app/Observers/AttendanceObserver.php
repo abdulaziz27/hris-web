@@ -59,7 +59,11 @@ class AttendanceObserver
             }
 
             // Get the period (month) for this attendance
-            $period = Carbon::parse($attendance->date)->startOfMonth();
+            // ✅ Parse date as date-only in app timezone to avoid timezone shift
+            $dateStr = $attendance->date instanceof \Carbon\Carbon 
+                ? $attendance->date->format('Y-m-d') 
+                : $attendance->date;
+            $period = Carbon::createFromFormat('Y-m-d', $dateStr, config('app.timezone'))->startOfMonth();
 
             // Find or create payroll for this user and period
             $payroll = Payroll::firstOrNew([
@@ -87,10 +91,11 @@ class AttendanceObserver
                 $payroll->created_by = 1; // System user
             }
 
-            // Recalculate present_days based on actual attendances
+            // Recalculate present_days based on actual attendances (with location timezone awareness)
             $startDate = $period->copy()->startOfMonth();
             $endDate = $period->copy()->endOfMonth();
-            $presentDays = PayrollCalculator::calculatePresentDays($attendance->user_id, $startDate, $endDate);
+            $user = \App\Models\User::find($attendance->user_id);
+            $presentDays = PayrollCalculator::calculatePresentDays($attendance->user_id, $startDate, $endDate, $user->location_id ?? null);
 
             // Update present_days (selalu update, tidak peduli nilai_hk)
             $payroll->present_days = $presentDays;

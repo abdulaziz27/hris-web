@@ -246,10 +246,11 @@ class PayrollForm
             $basicSalary = PayrollCalculator::calculateBasicSalary($nilaiHK, $standardWorkdays);
         $set('basic_salary', $basicSalary);
 
-            // Calculate present days (only if period is set and valid)
+            // Calculate present days (only if period is set and valid, with location timezone awareness)
         $start = $period->copy()->startOfMonth();
         $end = $period->copy()->endOfMonth();
-        $presentDays = PayrollCalculator::calculatePresentDays($userId, $start, $end);
+        $user = \App\Models\User::find($userId);
+        $presentDays = PayrollCalculator::calculatePresentDays($userId, $start, $end, $user->location_id ?? null);
         $set('present_days', $presentDays);
 
             // Get hk_review from form (don't override if already set)

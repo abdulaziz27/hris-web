@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Holiday;
+use App\Services\TimezoneService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -10,26 +11,49 @@ class WorkdayCalculator
 {
     /**
      * Check if the given date is a weekend (Saturday or Sunday).
+     * 
+     * @param Carbon $date
+     * @param int|null $locationId Optional location ID for timezone-aware calculation
      */
-    public static function isWeekend(Carbon $date): bool
+    public static function isWeekend(Carbon $date, ?int $locationId = null): bool
     {
+        // ✅ Convert date ke timezone lokasi sebelum cek weekend
+        if ($locationId) {
+            $date = $date->copy()->setTimezone(
+                TimezoneService::getLocationTimezone($locationId)
+            );
+        }
+        
         return $date->isWeekend();
     }
 
     /**
      * Check if the given date is a holiday.
+     * 
+     * @param Carbon $date
+     * @param int|null $locationId Optional location ID for timezone-aware calculation
      */
-    public static function isHoliday(Carbon $date): bool
+    public static function isHoliday(Carbon $date, ?int $locationId = null): bool
     {
+        // ✅ Convert date ke timezone lokasi sebelum cek holiday
+        if ($locationId) {
+            $date = $date->copy()->setTimezone(
+                TimezoneService::getLocationTimezone($locationId)
+            );
+        }
+        
         return Holiday::where('date', $date->toDateString())->exists();
     }
 
     /**
      * Check if the given date is a non-working day (weekend or holiday).
+     * 
+     * @param Carbon $date
+     * @param int|null $locationId Optional location ID for timezone-aware calculation
      */
-    public static function isNonWorkingDay(Carbon $date): bool
+    public static function isNonWorkingDay(Carbon $date, ?int $locationId = null): bool
     {
-        return self::isWeekend($date) || self::isHoliday($date);
+        return self::isWeekend($date, $locationId) || self::isHoliday($date, $locationId);
     }
 
     /**

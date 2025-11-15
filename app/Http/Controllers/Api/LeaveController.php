@@ -87,8 +87,9 @@ class LeaveController extends Controller
         $userId = $request->user()->id;
 
         // Calculate total days excluding weekends and holidays
-        $startDate = Carbon::parse($validated['start_date']);
-        $endDate = Carbon::parse($validated['end_date']);
+        // Parse dates as date-only in app timezone to avoid timezone shift
+        $startDate = Carbon::createFromFormat('Y-m-d', $validated['start_date'], config('app.timezone'))->startOfDay();
+        $endDate = Carbon::createFromFormat('Y-m-d', $validated['end_date'], config('app.timezone'))->startOfDay();
         $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays($startDate, $endDate);
 
         // Check leave balance
@@ -159,8 +160,13 @@ class LeaveController extends Controller
 
         // Recalculate total days if dates changed
         if (isset($validated['start_date']) || isset($validated['end_date'])) {
-            $startDate = Carbon::parse($validated['start_date'] ?? $leave->start_date);
-            $endDate = Carbon::parse($validated['end_date'] ?? $leave->end_date);
+            // ✅ Parse dates as date-only in app timezone to avoid timezone shift
+            $startDateStr = $validated['start_date'] ?? $leave->start_date->format('Y-m-d');
+            $endDateStr = $validated['end_date'] ?? $leave->end_date->format('Y-m-d');
+            
+            $startDate = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'))->startOfDay();
+            $endDate = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'))->startOfDay();
+            
             $validated['total_days'] = WorkdayCalculator::countWorkdaysExcludingHolidays($startDate, $endDate);
         }
 
@@ -213,10 +219,10 @@ class LeaveController extends Controller
             }
 
             // Recalculate total days to ensure consistency with holidays
-            $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays(
-                Carbon::parse($leave->start_date),
-                Carbon::parse($leave->end_date)
-            );
+            // ✅ Parse dates as date-only in app timezone to avoid timezone shift
+            $startDate = Carbon::createFromFormat('Y-m-d', $leave->start_date->format('Y-m-d'), config('app.timezone'))->startOfDay();
+            $endDate = Carbon::createFromFormat('Y-m-d', $leave->end_date->format('Y-m-d'), config('app.timezone'))->startOfDay();
+            $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays($startDate, $endDate);
 
             // Update leave status
             $leave->update([

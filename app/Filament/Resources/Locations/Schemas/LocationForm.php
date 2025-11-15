@@ -41,6 +41,18 @@ class LocationForm
                             ->placeholder('0')
                             ->required()
                             ->helperText('Nilai HK (rate bayaran per hari kerja) default untuk semua karyawan di lokasi ini. Gaji akan dihitung per hari kerja: Nilai HK × Hari Kerja. Akan digunakan otomatis untuk perhitungan payroll, kecuali jika karyawan memiliki nilai HK khusus (override).'),
+
+                        Select::make('timezone')
+                            ->label('Timezone')
+                            ->required()
+                            ->default('Asia/Jakarta')
+                            ->options([
+                                'Asia/Jakarta' => 'WIB (UTC+7) - Jakarta, Sumatera, Kalimantan Barat',
+                                'Asia/Makassar' => 'WITA (UTC+8) - Makassar, Bali, Kalimantan Tengah/Timur, Sulawesi, NTT',
+                                'Asia/Jayapura' => 'WIT (UTC+9) - Jayapura, Papua, Maluku',
+                            ])
+                            ->native(false)
+                            ->helperText('Pilih timezone sesuai lokasi geografis kebun/kantor. Penting untuk perhitungan waktu absensi yang akurat.'),
                     ])
                     ->columns(1),
 

@@ -38,6 +38,7 @@ class LeaveForm
                             ->label('Tanggal Mulai')
                             ->required()
                             ->native(false)
+                            ->displayFormat('d/m/Y')
                             ->reactive()
                             ->afterStateUpdated(function ($state, $set, $get) {
                                 self::calculateTotalDays($get, $set);
@@ -47,6 +48,7 @@ class LeaveForm
                             ->label('Tanggal Selesai')
                             ->required()
                             ->native(false)
+                            ->displayFormat('d/m/Y')
                             ->reactive()
                             ->afterStateUpdated(function ($state, $set, $get) {
                                 self::calculateTotalDays($get, $set);
@@ -107,8 +109,19 @@ class LeaveForm
         $endDate = $get('end_date');
 
         if ($startDate && $endDate) {
-            $start = Carbon::parse($startDate);
-            $end = Carbon::parse($endDate);
+            // Handle both string and Carbon instance
+            $startDateStr = $startDate instanceof \Carbon\Carbon 
+                ? $startDate->format('Y-m-d') 
+                : $startDate;
+            $endDateStr = $endDate instanceof \Carbon\Carbon 
+                ? $endDate->format('Y-m-d') 
+                : $endDate;
+            
+            // Parse dates as date-only (no timezone conversion)
+            // Create in app timezone to avoid timezone shift issues
+            $start = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'))->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'))->startOfDay();
+            
             $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays($start, $end);
             $set('total_days', $totalDays);
         }

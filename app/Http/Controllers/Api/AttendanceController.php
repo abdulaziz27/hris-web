@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\ShiftAssignment;
 use App\Models\ShiftKerja;
+use App\Services\TimezoneService;
 use App\Support\WorkdayCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -57,7 +58,9 @@ class AttendanceController extends Controller
                 'location_name' => $location->name,
             ], 400);
         }
-        $currentDateTime = now();
+        
+        // ✅ Gunakan timezone lokasi, bukan app timezone
+        $currentDateTime = TimezoneService::nowInLocation($location->id);
 
         $scheduledShiftId = ShiftAssignment::query()
             ->forUser($currentUser->id)
@@ -68,8 +71,9 @@ class AttendanceController extends Controller
         $resolvedShiftId = $scheduledShiftId ?? $currentUser->shift_kerja_id;
         $activeShift = $resolvedShiftId ? ShiftKerja::query()->find($resolvedShiftId) : null;
 
-        $isWeekend = WorkdayCalculator::isWeekend($currentDateTime->copy());
-        $isHoliday = WorkdayCalculator::isHoliday($currentDateTime->copy());
+        // ✅ Pass location_id untuk timezone-aware calculation
+        $isWeekend = WorkdayCalculator::isWeekend($currentDateTime->copy(), $location->id);
+        $isHoliday = WorkdayCalculator::isHoliday($currentDateTime->copy(), $location->id);
 
         $status = 'on_time';
         $lateMinutes = 0;
@@ -79,10 +83,12 @@ class AttendanceController extends Controller
 
             if ($startTimeString) {
                 $normalizedStartTime = strlen($startTimeString) === 5 ? $startTimeString.':00' : $startTimeString;
+                
+                // ✅ Buat shift start dalam timezone lokasi
                 $shiftStart = Carbon::createFromFormat(
                     'Y-m-d H:i:s',
                     $currentDateTime->toDateString().' '.$normalizedStartTime,
-                    config('app.timezone')
+                    TimezoneService::getLocationTimezone($location->id)
                 );
 
                 if ($activeShift->is_cross_day && $currentDateTime->lessThan($shiftStart)) {
@@ -128,11 +134,12 @@ class AttendanceController extends Controller
             'longitude' => 'required',
         ]);
 
-        // get today attendance
-        $today = now();
+        // ✅ Get today attendance using user's location timezone
+        $user = $request->user();
+        $today = TimezoneService::nowInLocation($user->location_id);
 
-        $attendance = Attendance::where('user_id', $request->user()->id)
-            ->whereDate('date', $today)
+        $attendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $today->toDateString())
             ->first();
 
         // check if attendance not found
@@ -140,8 +147,10 @@ class AttendanceController extends Controller
             return response(['message' => 'Checkin first'], 400);
         }
 
-        // save checkout
-        $attendance->time_out = now()->toTimeString();
+        // ✅ Save checkout using location timezone
+        $user = $request->user();
+        $currentTime = TimezoneService::nowInLocation($user->location_id);
+        $attendance->time_out = $currentTime->toTimeString();
         $attendance->latlon_out = $request->latitude.','.$request->longitude;
         $attendance->save();
 
@@ -154,9 +163,12 @@ class AttendanceController extends Controller
     // check is checkedin
     public function isCheckedin(Request $request)
     {
-        // get today attendance
-        $attendance = Attendance::where('user_id', $request->user()->id)
-            ->whereDate('date', now())
+        // ✅ Get today attendance using user's location timezone
+        $user = $request->user();
+        $today = TimezoneService::nowInLocation($user->location_id);
+        
+        $attendance = Attendance::where('user_id', $user->id)
+            ->whereDate('date', $today->toDateString())
             ->first();
 
         $isCheckout = $attendance ? $attendance->time_out : false;

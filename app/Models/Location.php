@@ -20,6 +20,7 @@ class Location extends Model
         'description',
         'default_salary',
         'nilai_hk',
+        'timezone',
     ];
 
     protected function casts(): array
