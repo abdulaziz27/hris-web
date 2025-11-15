@@ -70,7 +70,33 @@ class UserForm
                     ->relationship('location', 'name')
                     ->searchable()
                     ->preload()
-                    ->helperText('Pilih lokasi kerja default untuk karyawan (opsional)'),
+                    ->helperText('Pilih lokasi kerja default untuk karyawan (opsional)')
+                    ->reactive(),
+                TextInput::make('nilai_hk')
+                    ->label('Nilai HK (Override)')
+                    ->numeric()
+                    ->prefix('Rp')
+                    ->placeholder('Kosongkan untuk pakai default lokasi')
+                    ->helperText(function ($record, $get) {
+                        $locationId = $get('location_id') ?? $record?->location_id;
+                        if ($locationId) {
+                            $location = \App\Models\Location::find($locationId);
+                            if ($location?->nilai_hk) {
+                                return '⚠️ Kosongkan untuk menggunakan nilai HK default lokasi: Rp ' . number_format($location->nilai_hk, 0, ',', '.') . '. Hanya isi jika karyawan ini memiliki nilai HK berbeda (kasus khusus).';
+                            }
+                        }
+                        return '⚠️ Kosongkan jika ingin menggunakan nilai HK default dari lokasi. Hanya isi jika karyawan ini memiliki nilai HK berbeda dari lokasinya (kasus khusus).';
+                    })
+                    ->visible(fn ($get, $record) => ($get('location_id') ?? $record?->location_id) !== null)
+                    ->reactive(),
+                Select::make('salary_type')
+                    ->label('Tipe Gaji')
+                    ->options([
+                        'monthly' => 'Bulanan',
+                        'daily' => 'Harian',
+                    ])
+                    ->default('monthly')
+                    ->helperText('Tipe perhitungan gaji'),
                 FileUpload::make('image_url')
                     ->label('Foto Profil')
                     ->image()

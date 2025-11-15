@@ -18,12 +18,16 @@ class Location extends Model
         'attendance_type',
         'address',
         'description',
+        'default_salary',
+        'nilai_hk',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'default_salary' => 'decimal:2',
+            'nilai_hk' => 'decimal:2',
         ];
     }
 

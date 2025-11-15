@@ -4,44 +4,83 @@ namespace App\Filament\Widgets;
 
 use App\Models\Leave;
 use App\Models\Location;
+use Carbon\Carbon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class PendingApprovalsWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Leave Menunggu Persetujuan';
+    use InteractsWithPageFilters;
 
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 4;
 
-    public ?int $locationFilter = null;
-
-    public function getHeading(): ?string
-    {
-        $locationName = $this->getLocationName();
-        
-        if ($locationName) {
-            return "Leave Menunggu Persetujuan - {$locationName}";
-        }
-
-        return 'Leave Menunggu Persetujuan';
-    }
-
     public function table(Table $table): Table
     {
+        $pageFilters = $this->pageFilters ?? [];
+        $locationId = $pageFilters['location'] ?? null;
+        $locationId = $locationId ? (int) $locationId : null; // Ensure it's integer or null
+        $startDate = $pageFilters['start_date'] ?? null;
+        $endDate = $pageFilters['end_date'] ?? null;
+        
+        $locationName = $locationId ? Location::find($locationId)?->name : null;
+        $dateRangeText = $this->getDateRangeText($startDate, $endDate);
+        
+        $heading = 'Leave Menunggu Persetujuan';
+        
+        $parts = array_filter([$dateRangeText, $locationName]);
+        if (!empty($parts)) {
+            $heading .= ' - ' . implode(' - ', $parts);
+        }
+        
         $query = Leave::with(['employee:id,name,location_id', 'employee.location:id,name'])
             ->where('status', 'pending')
             ->latest('created_at');
 
-        if ($this->locationFilter) {
-            $query->whereHas('employee', function ($q) {
-                $q->where('location_id', $this->locationFilter);
+        if ($locationId) {
+            $query->whereHas('employee', function ($q) use ($locationId) {
+                $q->where('location_id', $locationId);
+            });
+        } else {
+            // When no location filter, also include records where employee has no location
+            // This ensures all records are shown when "Semua Lokasi" is selected
+        }
+
+        // Filter by date range - match if leave period overlaps with filter range
+        if ($startDate || $endDate) {
+            $query->where(function ($q) use ($startDate, $endDate) {
+                // Leave starts before or on end date and ends on or after start date
+                if ($startDate && $endDate) {
+                    $q->where(function ($subQ) use ($startDate, $endDate) {
+                        $subQ->where(function ($q1) use ($startDate, $endDate) {
+                            // Leave start_date is within range
+                            $q1->whereDate('start_date', '>=', $startDate)
+                                ->whereDate('start_date', '<=', $endDate);
+                        })->orWhere(function ($q2) use ($startDate, $endDate) {
+                            // Leave end_date is within range
+                            $q2->whereDate('end_date', '>=', $startDate)
+                                ->whereDate('end_date', '<=', $endDate);
+                        })->orWhere(function ($q3) use ($startDate, $endDate) {
+                            // Leave spans the entire range
+                            $q3->whereDate('start_date', '<=', $startDate)
+                                ->whereDate('end_date', '>=', $endDate);
+                        });
+                    });
+                } elseif ($startDate) {
+                    // Only start date filter - show leaves that end on or after start date
+                    $q->whereDate('end_date', '>=', $startDate);
+                } elseif ($endDate) {
+                    // Only end date filter - show leaves that start on or before end date
+                    $q->whereDate('start_date', '<=', $endDate);
+                }
             });
         }
 
         return $table
+            ->heading($heading)
             ->query($query->limit(10))
             ->columns([
                 TextColumn::make('employee.name')
@@ -52,7 +91,12 @@ class PendingApprovalsWidget extends BaseWidget
                     ->label('Lokasi')
                     ->badge()
                     ->color('info')
-                    ->visible(! $this->locationFilter), // Hide location column when filter is active
+                    ->state(function ($record): ?string {
+                        return $record->employee?->location?->name ?? null;
+                    })
+                    ->placeholder('Tidak ada lokasi')
+                    ->default('Tidak ada lokasi')
+                    ->visible(! $locationId), // Hide location column when filter is active
 
                 TextColumn::make('start_date')
                     ->label('Mulai')
@@ -98,12 +142,16 @@ class PendingApprovalsWidget extends BaseWidget
             ->paginated(false);
     }
 
-    private function getLocationName(): ?string
+    private function getDateRangeText(?string $startDate, ?string $endDate): string
     {
-        if (! $this->locationFilter) {
-            return null;
+        if ($startDate && $endDate) {
+            return Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } elseif ($startDate) {
+            return 'Mulai ' . Carbon::parse($startDate)->format('d/m/Y');
+        } elseif ($endDate) {
+            return 'Sampai ' . Carbon::parse($endDate)->format('d/m/Y');
         }
 
-        return Location::find($this->locationFilter)?->name;
+        return '';
     }
 }

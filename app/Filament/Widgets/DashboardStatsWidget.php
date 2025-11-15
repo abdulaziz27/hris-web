@@ -10,23 +10,32 @@ use App\Models\Location;
 use App\Models\Overtime;
 use App\Models\ShiftKerja;
 use App\Models\User;
+use Carbon\Carbon;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class DashboardStatsWidget extends BaseWidget
 {
+    use InteractsWithPageFilters;
+
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 1;
 
-    public ?int $locationFilter = null;
-
     protected function getStats(): array
     {
-        $locationName = $this->getLocationName();
+        $pageFilters = $this->pageFilters ?? [];
+        $locationId = $pageFilters['location'] ?? null;
+        $locationId = $locationId ? (int) $locationId : null; // Ensure it's integer or null
+        $startDate = $pageFilters['start_date'] ?? null;
+        $endDate = $pageFilters['end_date'] ?? null;
+        
+        $locationName = $locationId ? Location::find($locationId)?->name : null;
+        $dateRangeDescription = $this->getDateRangeDescription($startDate, $endDate);
 
         return [
-            Stat::make('Total Pegawai', $this->getTotalUsers())
+            Stat::make('Total Pegawai', $this->getTotalUsers($locationId))
                 ->description($locationName ? "Pegawai di {$locationName}" : 'Jumlah seluruh pegawai')
                 ->descriptionIcon('heroicon-m-users')
                 ->color('primary'),
@@ -46,85 +55,137 @@ class DashboardStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('warning'),
 
-            Stat::make('Overtime Disetujui', $this->getApprovedOvertimeThisMonth())
-                ->description($locationName ? "Bulan ini - {$locationName}" : 'Bulan ini yang disetujui')
+            Stat::make('Overtime Disetujui', $this->getApprovedOvertime($locationId, $startDate, $endDate))
+                ->description($this->getOvertimeDescription($locationName, $dateRangeDescription))
                 ->descriptionIcon('heroicon-m-plus-circle')
                 ->color('success'),
 
-            Stat::make('Cuti Disetujui', $this->getApprovedLeaveThisMonth())
-                ->description($locationName ? "Bulan ini - {$locationName}" : 'Bulan ini yang disetujui')
+            Stat::make('Cuti Disetujui', $this->getApprovedLeave($locationId, $startDate, $endDate))
+                ->description($this->getLeaveDescription($locationName, $dateRangeDescription))
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success'),
 
-            Stat::make('Absensi Lengkap', $this->getCompleteAttendanceThisMonth())
-                ->description($locationName ? "Masuk & keluar - {$locationName}" : 'Masuk & keluar bulan ini')
+            Stat::make('Absensi Lengkap', $this->getCompleteAttendance($locationId, $startDate, $endDate))
+                ->description($this->getAttendanceDescription($locationName, $dateRangeDescription))
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('primary'),
         ];
     }
 
-    private function getTotalUsers(): int
+    private function getTotalUsers(?int $locationId): int
     {
         $query = User::query();
 
-        if ($this->locationFilter) {
-            $query->where('location_id', $this->locationFilter);
+        if ($locationId) {
+            $query->where('location_id', $locationId);
         }
 
         return $query->count();
     }
 
-    private function getApprovedOvertimeThisMonth(): int
+    private function getApprovedOvertime(?int $locationId, ?string $startDate, ?string $endDate): int
     {
-        $query = Overtime::where('status', 'approved')
-            ->whereMonth('date', now()->month)
-            ->whereYear('date', now()->year);
+        $query = Overtime::where('status', 'approved');
 
-        if ($this->locationFilter) {
-            $query->whereHas('user', function ($q) {
-                $q->where('location_id', $this->locationFilter);
+        if ($startDate) {
+            $query->whereDate('date', '>=', $startDate);
+        } else {
+            // Default to this month if no date range
+            $query->whereMonth('date', now()->month)
+                ->whereYear('date', now()->year);
+        }
+
+        if ($endDate) {
+            $query->whereDate('date', '<=', $endDate);
+        }
+
+        if ($locationId) {
+            $query->whereHas('user', function ($q) use ($locationId) {
+                $q->where('location_id', $locationId);
             });
         }
 
         return $query->count();
     }
 
-    private function getApprovedLeaveThisMonth(): int
+    private function getApprovedLeave(?int $locationId, ?string $startDate, ?string $endDate): int
     {
         $query = Leave::where('status', 'approved')
-            ->whereNotNull('approved_at')
-            ->whereMonth('approved_at', now()->month)
-            ->whereYear('approved_at', now()->year);
+            ->whereNotNull('approved_at');
 
-        if ($this->locationFilter) {
-            $query->whereHas('employee', function ($q) {
-                $q->where('location_id', $this->locationFilter);
+        if ($startDate) {
+            $query->whereDate('approved_at', '>=', $startDate);
+        } else {
+            // Default to this month if no date range
+            $query->whereMonth('approved_at', now()->month)
+                ->whereYear('approved_at', now()->year);
+        }
+
+        if ($endDate) {
+            $query->whereDate('approved_at', '<=', $endDate);
+        }
+
+        if ($locationId) {
+            $query->whereHas('employee', function ($q) use ($locationId) {
+                $q->where('location_id', $locationId);
             });
         }
 
         return $query->count();
     }
 
-    private function getCompleteAttendanceThisMonth(): int
+    private function getCompleteAttendance(?int $locationId, ?string $startDate, ?string $endDate): int
     {
         $query = Attendance::whereNotNull('time_in')
-            ->whereNotNull('time_out')
-            ->whereMonth('date', now()->month)
-            ->whereYear('date', now()->year);
+            ->whereNotNull('time_out');
 
-        if ($this->locationFilter) {
-            $query->where('location_id', $this->locationFilter);
+        if ($startDate) {
+            $query->whereDate('date', '>=', $startDate);
+        } else {
+            // Default to this month if no date range
+            $query->whereMonth('date', now()->month)
+                ->whereYear('date', now()->year);
+        }
+
+        if ($endDate) {
+            $query->whereDate('date', '<=', $endDate);
+        }
+
+        if ($locationId) {
+            $query->where('location_id', $locationId);
         }
 
         return $query->count();
     }
 
-    private function getLocationName(): ?string
+    private function getDateRangeDescription(?string $startDate, ?string $endDate): string
     {
-        if (! $this->locationFilter) {
-            return null;
+        if ($startDate && $endDate) {
+            return Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } elseif ($startDate) {
+            return 'Mulai ' . Carbon::parse($startDate)->format('d/m/Y');
+        } elseif ($endDate) {
+            return 'Sampai ' . Carbon::parse($endDate)->format('d/m/Y');
         }
 
-        return Location::find($this->locationFilter)?->name;
+        return 'Bulan ini';
+    }
+
+    private function getOvertimeDescription(?string $locationName, string $dateRangeDescription): string
+    {
+        $parts = array_filter([$locationName, $dateRangeDescription]);
+        return !empty($parts) ? implode(' - ', $parts) : 'Bulan ini yang disetujui';
+    }
+
+    private function getLeaveDescription(?string $locationName, string $dateRangeDescription): string
+    {
+        $parts = array_filter([$locationName, $dateRangeDescription]);
+        return !empty($parts) ? implode(' - ', $parts) : 'Bulan ini yang disetujui';
+    }
+
+    private function getAttendanceDescription(?string $locationName, string $dateRangeDescription): string
+    {
+        $parts = array_filter([$locationName, $dateRangeDescription]);
+        return !empty($parts) ? implode(' - ', $parts) : 'Masuk & keluar bulan ini';
     }
 }

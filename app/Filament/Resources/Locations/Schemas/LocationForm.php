@@ -33,6 +33,14 @@ class LocationForm
                             ->label('Deskripsi')
                             ->rows(2)
                             ->placeholder('Deskripsi singkat tentang lokasi ini'),
+
+                        TextInput::make('nilai_hk')
+                            ->label('Nilai HK Default Lokasi')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->placeholder('0')
+                            ->required()
+                            ->helperText('Nilai HK (rate bayaran per hari kerja) default untuk semua karyawan di lokasi ini. Gaji akan dihitung per hari kerja: Nilai HK × Hari Kerja. Akan digunakan otomatis untuk perhitungan payroll, kecuali jika karyawan memiliki nilai HK khusus (override).'),
                     ])
                     ->columns(1),
 

@@ -45,6 +45,14 @@ class LocationsTable
                     ->badge()
                     ->color('info'),
 
+                TextColumn::make('nilai_hk')
+                    ->label('Nilai HK')
+                    ->formatStateUsing(function ($state) {
+                        return $state ? 'Rp ' . number_format($state, 0, ',', '.') : '-';
+                    })
+                    ->sortable()
+                    ->toggleable(),
+
                 IconColumn::make('is_active')
                     ->label('Status')
                     ->boolean()

@@ -8,8 +8,8 @@
   <!-- Text "ago" -->
   <text x="42" y="16" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#F9FAFB" class="text-gray-50">ago</text>
 
-  <!-- Text "HRIS" -->
-  <text x="42" y="30" font-family="Arial, sans-serif" font-size="10" font-weight="600" fill="#D1D5DB" class="text-gray-300" letter-spacing="1px">HRIS</text>
+  <!-- Text "SNC" -->
+  <text x="42" y="30" font-family="Arial, sans-serif" font-size="10" font-weight="600" fill="#D1D5DB" class="text-gray-300" letter-spacing="1px">SNC</text>
 
   <!-- Small decorative elements -->
   <circle cx="82" cy="12" r="1.5" fill="#34D399" class="text-green-400"/>

@@ -4,41 +4,55 @@ namespace App\Filament\Widgets;
 
 use App\Models\Attendance;
 use App\Models\Location;
+use Carbon\Carbon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class LatestAttendanceWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Absensi Terbaru';
+    use InteractsWithPageFilters;
 
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 3;
 
-    public ?int $locationFilter = null;
-
-    public function getHeading(): ?string
-    {
-        $locationName = $this->getLocationName();
-        
-        if ($locationName) {
-            return "Absensi Terbaru - {$locationName}";
-        }
-
-        return 'Absensi Terbaru';
-    }
-
     public function table(Table $table): Table
     {
+        $pageFilters = $this->pageFilters ?? [];
+        $locationId = $pageFilters['location'] ?? null;
+        $locationId = $locationId ? (int) $locationId : null; // Ensure it's integer or null
+        $startDate = $pageFilters['start_date'] ?? null;
+        $endDate = $pageFilters['end_date'] ?? null;
+        
+        $locationName = $locationId ? Location::find($locationId)?->name : null;
+        $dateRangeText = $this->getDateRangeText($startDate, $endDate);
+        
+        $heading = 'Absensi Terbaru';
+        
+        $parts = array_filter([$dateRangeText, $locationName]);
+        if (!empty($parts)) {
+            $heading .= ' - ' . implode(' - ', $parts);
+        }
+        
         $query = Attendance::with(['user:id,name,position,location_id', 'location:id,name'])
-            ->latest('created_at');
+            ->latest('date');
 
-        if ($this->locationFilter) {
-            $query->where('location_id', $this->locationFilter);
+        if ($locationId) {
+            $query->where('location_id', $locationId);
+        }
+
+        if ($startDate) {
+            $query->whereDate('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('date', '<=', $endDate);
         }
 
         return $table
+            ->heading($heading)
             ->query($query->limit(10))
             ->columns([
                 TextColumn::make('user.name')
@@ -52,7 +66,12 @@ class LatestAttendanceWidget extends BaseWidget
                     ->label('Lokasi')
                     ->badge()
                     ->color('info')
-                    ->visible(! $this->locationFilter), // Hide location column when filter is active
+                    ->state(function ($record): ?string {
+                        return $record->location?->name ?? null;
+                    })
+                    ->placeholder('Tidak ada lokasi')
+                    ->default('Tidak ada lokasi')
+                    ->visible(! $locationId), // Hide location column when filter is active
 
                 TextColumn::make('date')
                     ->label('Tanggal')
@@ -90,12 +109,16 @@ class LatestAttendanceWidget extends BaseWidget
             ->paginated(false);
     }
 
-    private function getLocationName(): ?string
+    private function getDateRangeText(?string $startDate, ?string $endDate): string
     {
-        if (! $this->locationFilter) {
-            return null;
+        if ($startDate && $endDate) {
+            return Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } elseif ($startDate) {
+            return 'Mulai ' . Carbon::parse($startDate)->format('d/m/Y');
+        } elseif ($endDate) {
+            return 'Sampai ' . Carbon::parse($endDate)->format('d/m/Y');
         }
 
-        return Location::find($this->locationFilter)?->name;
+        return '';
     }
 }

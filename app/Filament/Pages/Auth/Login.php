@@ -41,7 +41,7 @@ class Login extends BaseLogin
 
     public function getHeading(): string|Htmlable
     {
-        return 'Masuk ke HRIS';
+        return 'Login';
     }
 
     public function getSubheading(): string|Htmlable|null

@@ -58,6 +58,17 @@ class WorkdayCalculator
     }
 
     /**
+     * Count standard workdays for a specific month (exclude weekends and holidays).
+     */
+    public static function countStandardWorkdaysForMonth(Carbon $date): int
+    {
+        $start = $date->copy()->startOfMonth();
+        $end = $date->copy()->endOfMonth();
+
+        return self::countWorkdaysExcludingHolidays($start, $end);
+    }
+
+    /**
      * Generate weekend holidays for a given year.
      *
      * @return array{inserted: int, skipped: int}

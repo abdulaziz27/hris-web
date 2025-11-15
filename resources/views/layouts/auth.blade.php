@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no" name="viewport">
-    <title>@yield('title') &mdash; HRIS</title>
+    <title>@yield('title') &mdash; PT. SAIR NAPAOR COM</title>
     <link rel="icon" type="image/jpeg" href="{{ asset('img/logo-hris.jpg') }}">
 
     <!-- General CSS Files -->

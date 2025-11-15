@@ -4,42 +4,64 @@ namespace App\Filament\Widgets;
 
 use App\Models\Location;
 use App\Models\Overtime;
+use Carbon\Carbon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class PendingOvertimeWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Overtime Menunggu Persetujuan';
+    use InteractsWithPageFilters;
 
     protected int|string|array $columnSpan = 'full';
 
-    public ?int $locationFilter = null;
-
-    public function getHeading(): ?string
-    {
-        $locationName = $this->getLocationName();
-        
-        if ($locationName) {
-            return "Overtime Menunggu Persetujuan - {$locationName}";
-        }
-
-        return 'Overtime Menunggu Persetujuan';
-    }
-
     public function table(Table $table): Table
     {
+        // Safely get page filters
+        $pageFilters = [];
+        if (property_exists($this, 'pageFilters') && isset($this->pageFilters)) {
+            $pageFilters = is_array($this->pageFilters) ? $this->pageFilters : [];
+        }
+        
+        $locationId = $pageFilters['location'] ?? null;
+        $locationId = $locationId ? (int) $locationId : null; // Ensure it's integer or null
+        $startDate = $pageFilters['start_date'] ?? null;
+        $endDate = $pageFilters['end_date'] ?? null;
+        
+        $locationName = $locationId ? Location::find($locationId)?->name : null;
+        $dateRangeText = $this->getDateRangeText($startDate, $endDate);
+        
+        $heading = 'Overtime Menunggu Persetujuan';
+        
+        $parts = array_filter([$dateRangeText, $locationName]);
+        if (!empty($parts)) {
+            $heading .= ' - ' . implode(' - ', $parts);
+        }
+        
         $query = Overtime::with(['user:id,name,location_id', 'user.location:id,name'])
             ->where('status', 'pending')
-            ->latest('created_at');
+            ->latest('date');
 
-        if ($this->locationFilter) {
-            $query->whereHas('user', function ($q) {
-                $q->where('location_id', $this->locationFilter);
+        if ($locationId) {
+            $query->whereHas('user', function ($q) use ($locationId) {
+                $q->where('location_id', $locationId);
             });
+        } else {
+            // When no location filter, also include records where user has no location
+            // This ensures all records are shown when "Semua Lokasi" is selected
+        }
+
+        if ($startDate) {
+            $query->whereDate('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('date', '<=', $endDate);
         }
 
         return $table
+            ->heading($heading)
             ->query($query->limit(10))
             ->columns([
                 TextColumn::make('user.name')
@@ -50,7 +72,12 @@ class PendingOvertimeWidget extends BaseWidget
                     ->label('Lokasi')
                     ->badge()
                     ->color('info')
-                    ->visible(! $this->locationFilter), // Hide location column when filter is active
+                    ->state(function ($record): ?string {
+                        return $record->user?->location?->name ?? null;
+                    })
+                    ->placeholder('Tidak ada lokasi')
+                    ->default('Tidak ada lokasi')
+                    ->visible(! $locationId), // Hide location column when filter is active
 
                 TextColumn::make('date')
                     ->label('Tanggal')
@@ -85,12 +112,16 @@ class PendingOvertimeWidget extends BaseWidget
             ->paginated(false);
     }
 
-    private function getLocationName(): ?string
+    private function getDateRangeText(?string $startDate, ?string $endDate): string
     {
-        if (! $this->locationFilter) {
-            return null;
+        if ($startDate && $endDate) {
+            return Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } elseif ($startDate) {
+            return 'Mulai ' . Carbon::parse($startDate)->format('d/m/Y');
+        } elseif ($endDate) {
+            return 'Sampai ' . Carbon::parse($endDate)->format('d/m/Y');
         }
 
-        return Location::find($this->locationFilter)?->name;
+        return '';
     }
 }

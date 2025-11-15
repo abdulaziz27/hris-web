@@ -28,7 +28,7 @@ class LocationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Lokasi Kebun';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {

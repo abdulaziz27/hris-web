@@ -31,6 +31,9 @@ class User extends Authenticatable implements FilamentUser
         'departemen_id',
         'shift_kerja_id',
         'location_id',
+        'basic_salary',
+        'nilai_hk',
+        'salary_type',
         'face_embedding',
         'image_url',
         'fcm_token',
@@ -56,6 +59,8 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'basic_salary' => 'decimal:2',
+            'nilai_hk' => 'decimal:2',
         ];
     }
 
@@ -134,6 +139,11 @@ class User extends Authenticatable implements FilamentUser
     public function approvedLeaves()
     {
         return $this->hasMany(\App\Models\Leave::class, 'approved_by');
+    }
+
+    public function payrolls()
+    {
+        return $this->hasMany(\App\Models\Payroll::class);
     }
 
     /**

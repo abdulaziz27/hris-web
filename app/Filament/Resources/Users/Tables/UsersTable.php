@@ -89,6 +89,12 @@ class UsersTable
                     ->placeholder('Belum diset')
                     ->icon('heroicon-o-map-pin')
                     ->toggleable(),
+                TextColumn::make('basic_salary')
+                    ->label('Gaji Pokok')
+                    ->money('idr', locale: 'id')
+                    ->sortable()
+                    ->toggleable()
+                    ->placeholder('Belum diset'),
                 TextColumn::make('created_at')
                     ->label('Dibuat Pada')
                     ->dateTime()

@@ -10,27 +10,29 @@ use App\Filament\Widgets\PendingApprovalsWidget;
 use App\Filament\Widgets\PendingOvertimeWidget;
 use App\Models\Location;
 use BackedEnum;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard as BaseDashboard;
-use Livewire\Attributes\Url;
+use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
+use Filament\Schemas\Components\EmbeddedSchema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 
 class Dashboard extends BaseDashboard
 {
+    use HasFiltersForm;
+
     protected static ?string $title = 'Dashboard Absensi';
 
     protected static ?int $navigationSort = 1;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-home';
 
-    protected string $view = 'filament.pages.dashboard';
-
-    #[Url]
-    public ?int $locationFilter = null;
-
     public function getWidgets(): array
     {
         return [
-            // DashboardStatsWidget::class,
+            DashboardStatsWidget::class, // Stats cards - moved from header widgets
             AttendanceChartWidget::class,
             LatestAttendanceWidget::class,
             PendingApprovalsWidget::class,
@@ -50,38 +52,79 @@ class Dashboard extends BaseDashboard
 
     protected function getHeaderWidgets(): array
     {
-        return [
-            DashboardStatsWidget::class,
-        ];
+        // Empty - stats moved to main widgets so filter can be above them
+        return [];
     }
 
-    public function getHeaderWidgetsData(): array
+    public function content(Schema $schema): Schema
     {
-        return [
-            'locationFilter' => $this->locationFilter,
-        ];
+        // Override content to ensure filter form is rendered BEFORE widgets
+        // This makes filter appear above stat cards
+        return $schema
+            ->components([
+                // Filter form first (above all widgets)
+                ...(method_exists($this, 'getFiltersForm') ? [$this->getFiltersFormContentComponent()] : []),
+                // Then widgets (including stats cards)
+                $this->getWidgetsContentComponent(),
+            ]);
     }
 
-    public function getWidgetsData(): array
+    public function getFiltersFormContentComponent(): \Filament\Schemas\Components\Component
     {
-        return [
-            'locationFilter' => $this->locationFilter,
-        ];
+        return EmbeddedSchema::make('filtersForm');
     }
 
-    public function getLocations(): array
+    public function getFiltersForm(): Schema
     {
-        return [
-            null => 'Semua Lokasi',
-        ] + Location::where('is_active', true)
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->toArray();
+        if ((! $this->isCachingSchemas) && $this->hasCachedSchema('filtersForm')) {
+            return $this->getSchema('filtersForm');
+        }
+
+        // Create schema with 1 column for full width (overrides default columns constraint)
+        $schema = $this->makeSchema()
+            ->columns(1) // Set to 1 column for full width
+            ->extraAttributes(['wire:partial' => 'table-filters-form'])
+            ->live()
+            ->statePath('filters');
+
+        return $this->filtersForm($schema);
     }
 
-    public function updatedLocationFilter(): void
+    public function filtersForm(Schema $schema): Schema
     {
-        // Trigger widget refresh when filter changes
-        $this->dispatch('locationFilterChanged', locationFilter: $this->locationFilter);
+        return $schema
+            ->components([
+                Section::make('Filter Lokasi Kebun')
+                    ->description('Pilih lokasi dan tanggal untuk melihat data spesifik')
+                    ->icon('heroicon-o-map-pin')
+                    ->schema([
+                        Select::make('location')
+                            ->label('Lokasi Kebun')
+                            ->placeholder('Semua Lokasi')
+                            ->options(Location::where('is_active', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->toArray())
+                            ->searchable()
+                            ->preload()
+                            ->live(),
+                        
+                        DatePicker::make('start_date')
+                            ->label('Tanggal Mulai')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->live()
+                            ->placeholder('Pilih tanggal mulai'),
+                        
+                        DatePicker::make('end_date')
+                            ->label('Tanggal Akhir')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->live()
+                            ->placeholder('Pilih tanggal akhir')
+                            ->after('start_date'),
+                    ])
+                    ->columns(3), // 3 columns: location, start_date, end_date
+            ]);
     }
 }

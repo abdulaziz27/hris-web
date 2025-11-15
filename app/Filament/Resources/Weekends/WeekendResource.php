@@ -22,7 +22,7 @@ class WeekendResource extends Resource
 
     protected static ?string $pluralLabel = 'Hari Libur Weekend';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 11;
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {

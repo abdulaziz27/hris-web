@@ -27,7 +27,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->registration()
             ->login(\App\Filament\Pages\Auth\Login::class)
-            ->brandName('HRIS')
+            ->brandName('PT. SAIR NAPAOR COM')
             // ->brandLogo(asset('img/logo-hris.svg'))
             // ->darkModeBrandLogo(asset('img/logo-hris-dark.svg'))
             // ->brandLogoHeight('2rem')

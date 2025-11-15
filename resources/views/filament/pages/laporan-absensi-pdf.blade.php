@@ -166,14 +166,15 @@
                 <thead>
                     <tr>
                         <th style="width: 5%;">No</th>
-                        <th style="width: 20%;">Nama Karyawan</th>
-                        <th style="width: 15%;">Jabatan</th>
-                        <th style="width: 15%;">Departemen</th>
-                        <th style="width: 12%;">Tanggal</th>
-                        <th style="width: 8%;">Jam Masuk</th>
-                        <th style="width: 8%;">Jam Keluar</th>
-                        <th style="width: 10%;">Jam Kerja</th>
-                        <th style="width: 7%;">Status</th>
+                        <th style="width: 18%;">Nama Karyawan</th>
+                        <th style="width: 12%;">Lokasi</th>
+                        <th style="width: 12%;">Jabatan</th>
+                        <th style="width: 12%;">Departemen</th>
+                        <th style="width: 10%;">Tanggal</th>
+                        <th style="width: 7%;">Jam Masuk</th>
+                        <th style="width: 7%;">Jam Keluar</th>
+                        <th style="width: 9%;">Jam Kerja</th>
+                        <th style="width: 8%;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -207,6 +208,7 @@
                         <tr>
                             <td class="text-center">{{ $index + 1 }}</td>
                             <td>{{ $attendance->user->name }}</td>
+                            <td>{{ $attendance->location->name ?? '-' }}</td>
                             <td>{{ $attendance->user->position ?? '-' }}</td>
                             <td>{{ $attendance->user->department ?? '-' }}</td>
                             <td class="text-center">{{ \Carbon\Carbon::parse($attendance->date)->format('d/m/Y') }}

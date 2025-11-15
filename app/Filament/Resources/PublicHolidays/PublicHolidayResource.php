@@ -26,7 +26,7 @@ class PublicHolidayResource extends Resource
 
     protected static ?string $pluralLabel = 'Hari Libur Publik';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 12;
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {

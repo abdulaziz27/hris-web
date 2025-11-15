@@ -1,4 +1,4 @@
-# HRIS - Laravel Absensi Backend
+# SNC - Sistem Absensi PT. SAIR NAPAOR COM
 
 Sistem backend comprehensive untuk aplikasi absensi karyawan berbasis Laravel dengan dukungan API untuk mobile apps (Flutter) dan web dashboard untuk admin menggunakan Filament.
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Attendance;
+use App\Models\Location;
 use App\Models\User;
 use BackedEnum;
 use Carbon\Carbon;
@@ -26,7 +27,7 @@ class LaporanAbsensi extends Page implements HasTable
 
     protected static UnitEnum|string|null $navigationGroup = 'Laporan';
 
-    protected static ?int $navigationSort = 50;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $title = 'Laporan Absensi';
 
@@ -41,6 +42,12 @@ class LaporanAbsensi extends Page implements HasTable
                     ->label('Nama Karyawan')
                     ->sortable()
                     ->searchable(),
+
+                TextColumn::make('location.name')
+                    ->label('Lokasi')
+                    ->sortable()
+                    ->searchable()
+                    ->placeholder('-'),
 
                 TextColumn::make('user.position')
                     ->label('Jabatan')
@@ -130,6 +137,13 @@ class LaporanAbsensi extends Page implements HasTable
                         return $indicators;
                     }),
 
+                SelectFilter::make('location_id')
+                    ->label('Lokasi')
+                    ->options(Location::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Semua Lokasi'),
+
                 SelectFilter::make('user_id')
                     ->label('Karyawan')
                     ->options(User::all()->pluck('name', 'id'))
@@ -194,7 +208,7 @@ class LaporanAbsensi extends Page implements HasTable
                 ->color('success')
                 ->action(function () {
                     $query = $this->getFilteredTableQuery();
-                    $attendances = $query->with(['user'])->get();
+                    $attendances = $query->with(['user', 'location'])->get();
 
                     // Create PDF using blade view
                     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('filament.pages.laporan-absensi-pdf', [
@@ -223,11 +237,11 @@ class LaporanAbsensi extends Page implements HasTable
                 ->color('info')
                 ->action(function () {
                     $query = $this->getFilteredTableQuery();
-                    $attendances = $query->with(['user'])->get();
+                    $attendances = $query->with(['user', 'location'])->get();
 
                     // Create CSV content with BOM for proper UTF-8 encoding in Excel
                     $csvData = "\xEF\xBB\xBF"; // UTF-8 BOM
-                    $csvData .= "No,Nama Karyawan,Jabatan,Departemen,Tanggal,Jam Masuk,Jam Keluar,Jam Kerja,Status\n";
+                    $csvData .= "No,Nama Karyawan,Lokasi,Jabatan,Departemen,Tanggal,Jam Masuk,Jam Keluar,Jam Kerja,Status\n";
 
                     foreach ($attendances as $index => $attendance) {
                         $timeIn = $attendance->time_in ? Carbon::parse($attendance->time_in)->format('H:i') : '-';
@@ -248,9 +262,10 @@ class LaporanAbsensi extends Page implements HasTable
 
                         // Properly escape CSV fields
                         $csvData .= sprintf(
-                            "%d,\"%s\",\"%s\",\"%s\",%s,%s,%s,\"%s\",%s\n",
+                            "%d,\"%s\",\"%s\",\"%s\",\"%s\",%s,%s,%s,\"%s\",%s\n",
                             $index + 1,
                             str_replace('"', '""', $attendance->user->name),
+                            str_replace('"', '""', $attendance->location->name ?? '-'),
                             str_replace('"', '""', $attendance->user->position ?? '-'),
                             str_replace('"', '""', $attendance->user->department ?? '-'),
                             Carbon::parse($attendance->date)->format('d/m/Y'),
@@ -273,8 +288,8 @@ class LaporanAbsensi extends Page implements HasTable
     protected function getTableQuery(): Builder
     {
         return Attendance::query()
-            ->with(['user:id,name,position,department'])
-            ->select('id', 'user_id', 'date', 'time_in', 'time_out', 'latlon_in', 'latlon_out', 'created_at', 'updated_at')
+            ->with(['user:id,name,position,department', 'location:id,name'])
+            ->select('id', 'user_id', 'location_id', 'date', 'time_in', 'time_out', 'latlon_in', 'latlon_out', 'created_at', 'updated_at')
             ->orderBy('date', 'desc');
     }
 
