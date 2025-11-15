@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Overtime;
+use App\Services\TimezoneService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,14 +31,16 @@ class OvertimeController extends Controller
             if ($validator->fails()) {
                 return response()->json(['message' => 'Semua kolom harus diisi.', 'errors' => $validator->errors()], 422);
             }
-            $now = Carbon::now();
-            // $now = Carbon::now()->addHour(9);
+            
+            // ✅ Gunakan timezone lokasi user untuk overtime
+            $now = TimezoneService::nowInLocation($user->location_id);
             $startTime = $now->format('H:i'); // contoh: 17:05
             $date = $now->toDateString(); // contoh: 2025-08-07
             Log::info('Start Overtime', [
                 'user_id' => $user->id,
                 'start_time' => $startTime,
                 'date' => $date,
+                'timezone' => TimezoneService::getLocationTimezone($user->location_id),
             ]);
 
             // Cek apakah sudah ada lembur yang sedang berlangsung
@@ -131,8 +134,9 @@ class OvertimeController extends Controller
             if ($overtime->end_time) {
                 return response()->json(['message' => 'Data lembur sudah diakhiri.'], 400);
             }
-            $now = Carbon::now();
-            // $now = Carbon::now()->addHour(12);
+            
+            // ✅ Gunakan timezone lokasi user untuk overtime
+            $now = TimezoneService::nowInLocation($user->location_id);
             $endTime = $now->format('H:i');
 
             $overtime->update([
@@ -156,7 +160,8 @@ class OvertimeController extends Controller
                 return response()->json(['message' => 'Pegawai tidak ditemukan.'], 401);
             }
 
-            $today = now('Asia/Jakarta');
+            // ✅ Gunakan timezone lokasi user untuk check today overtime
+            $today = TimezoneService::nowInLocation($user->location_id);
 
             // Cek status lembur
             $overtime = Overtime::where('user_id', $user->id)
