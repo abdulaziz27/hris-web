@@ -506,11 +506,22 @@ class ListPayrolls extends ListRecords
                 ->modalDescription('Export laporan absensi dan payroll dalam format Excel dengan multiple sheets per lokasi.')
                 ->action(function (array $data) {
                     try {
+                        // Increase memory limit and execution time for large exports
+                        ini_set('memory_limit', '512M');
+                        set_time_limit(300); // 5 minutes
+
                         $startDate = Carbon::parse($data['start_date'])->startOfDay();
                         $endDate = Carbon::parse($data['end_date'])->endOfDay();
                         $locationId = $data['location_id'] ?? null;
 
                         $filename = 'laporan-payroll-' . $startDate->format('Y-m-d') . '-to-' . $endDate->format('Y-m-d') . '.xlsx';
+
+                        \Log::info('Starting Excel export', [
+                            'start_date' => $startDate->toDateString(),
+                            'end_date' => $endDate->toDateString(),
+                            'location_id' => $locationId,
+                            'filename' => $filename,
+                        ]);
 
                         Notification::make()
                             ->title('Export Excel')
@@ -518,15 +529,25 @@ class ListPayrolls extends ListRecords
                             ->body('File Excel sedang dipersiapkan...')
                             ->send();
 
-                        return Excel::download(
-                            new PayrollAttendanceExport($startDate, $endDate, $locationId),
-                            $filename
-                        );
+                        $export = new PayrollAttendanceExport($startDate, $endDate, $locationId);
+                        
+                        \Log::info('Excel export created, starting download');
+
+                        return Excel::download($export, $filename);
                     } catch (\Exception $e) {
+                        // Log full error details for debugging
+                        \Log::error('Excel export failed', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]);
+
                         Notification::make()
                             ->title('Export Gagal')
                             ->danger()
-                            ->body('Terjadi kesalahan: ' . $e->getMessage())
+                            ->body('Terjadi kesalahan: ' . $e->getMessage() . '. Silakan cek log untuk detail lebih lanjut.')
+                            ->persistent()
                             ->send();
                     }
                 }),
