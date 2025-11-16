@@ -3,8 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Attendance;
+use App\Models\Holiday;
 use App\Models\ShiftKerja;
 use App\Models\User;
+use App\Support\WorkdayCalculator;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
@@ -15,7 +17,7 @@ class AttendanceSeeder extends Seeder
      */
     public function run(): void
     {
-        $users = User::with(['shiftKerja', 'shiftKerjas'])->get();
+        $users = User::with(['shiftKerja', 'location'])->get();
         $shifts = ShiftKerja::all();
 
         if ($users->isEmpty() || $shifts->isEmpty()) {
@@ -24,77 +26,118 @@ class AttendanceSeeder extends Seeder
 
         Attendance::query()->delete();
 
-        // Generate 10 attendance records
-        $employeeUsers = $users->where('role', 'employee')->take(10);
-        $recordIndex = 0;
+        // Get sample employees (5-8 employees from different locations)
+        $employeeUsers = $users->where('role', 'employee')
+            ->whereNotNull('location_id')
+            ->whereNotNull('shift_kerja_id')
+            ->take(8);
+
+        if ($employeeUsers->isEmpty()) {
+            $this->command->warn('No employees with shift and location found.');
+            return;
+        }
+
+        // Get 2 months back (current month and previous month)
+        $today = Carbon::today();
+        $currentMonth = $today->copy()->startOfMonth();
+        $previousMonth = $today->copy()->subMonth()->startOfMonth();
+        
+        // Start from previous month start, end at today
+        $startDate = $previousMonth->copy();
+        $endDate = $today->copy();
+
+        // Get all holidays for the period
+        $holidays = Holiday::whereBetween('date', [
+            $startDate->toDateString(),
+            $endDate->toDateString()
+        ])->pluck('date')->map(fn($date) => Carbon::parse($date)->toDateString())->toArray();
+
+        $totalRecords = 0;
 
         foreach ($employeeUsers as $user) {
-            $shift = $user->shiftKerja
-                ?? $user->shiftKerjas->first()
-                ?? $shifts->first();
-
-            // Get user's location (realistic data)
+            $shift = $user->shiftKerja ?? $shifts->first();
             $locationId = $user->location_id;
 
-            // Random status untuk variasi
-            $statuses = ['on_time', 'late', 'on_time', 'early_leave', 'on_time'];
-            $status = $statuses[array_rand($statuses)];
+            // Generate attendance for each workday in the period
+            $currentDate = $startDate->copy();
+
+            while ($currentDate <= $endDate) {
+                // Skip weekends and holidays
+                $isWeekend = WorkdayCalculator::isWeekend($currentDate, $locationId);
+                $isHoliday = in_array($currentDate->toDateString(), $holidays);
             
-            $date = Carbon::today()->subDays($recordIndex);
-            $flowData = $this->generateFlowData($shift, $date, $status);
+                if (!$isWeekend && !$isHoliday) {
+                    // Generate attendance for this workday
+                    $flowData = $this->generateFlowData($shift, $currentDate, $locationId);
 
             Attendance::create([
                 'user_id' => $user->id,
                 'shift_id' => $shift->id,
-                'location_id' => $locationId, // Add location from user
-                'date' => $date->toDateString(),
+                        'location_id' => $locationId,
+                        'date' => $currentDate->toDateString(),
                 'time_in' => $flowData['time_in']->format('H:i:s'),
                 'time_out' => $flowData['time_out']?->format('H:i:s'),
-                'latlon_in' => $this->randomLatLon(),
-                'latlon_out' => $flowData['time_out'] ? $this->randomLatLon() : null,
+                        'latlon_in' => $this->getLocationLatLon($locationId),
+                        'latlon_out' => $flowData['time_out'] ? $this->getLocationLatLon($locationId) : null,
                 'status' => $flowData['status'],
-                'is_weekend' => $date->isWeekend(),
+                        'is_weekend' => false,
                 'is_holiday' => false,
                 'holiday_work' => false,
                 'late_minutes' => $flowData['late_minutes'],
                 'early_leave_minutes' => $flowData['early_leave_minutes'],
             ]);
 
-            $recordIndex++;
+                    $totalRecords++;
         }
+
+                $currentDate->addDay();
+            }
+        }
+
+        $this->command->info("✅ Created {$totalRecords} attendance records for " . $employeeUsers->count() . " employees (2 months: " . $previousMonth->format('M Y') . " - " . $currentMonth->format('M Y') . ").");
     }
 
-    private function generateFlowData(ShiftKerja $shift, Carbon $date, string $flowType): array
+    private function generateFlowData(ShiftKerja $shift, Carbon $date, ?int $locationId): array
     {
-        $shiftStart = $this->buildDateTime($date, $shift->getRawOriginal('start_time'));
-        $shiftEnd = $this->buildDateTime($date, $shift->getRawOriginal('end_time'));
+        // Use location timezone for accurate time calculation
+        $timezone = $locationId 
+            ? \App\Services\TimezoneService::getLocationTimezone($locationId)
+            : config('app.timezone');
+
+        $shiftStart = $this->buildDateTime($date, $shift->getRawOriginal('start_time'), $timezone);
+        $shiftEnd = $this->buildDateTime($date, $shift->getRawOriginal('end_time'), $timezone);
 
         if ($shiftEnd->lessThanOrEqualTo($shiftStart)) {
             $shiftEnd->addDay();
         }
 
-        return match ($flowType) {
+        // Random status untuk variasi (mostly on_time untuk payroll accuracy)
+        $statuses = ['on_time', 'on_time', 'on_time', 'late', 'on_time', 'on_time', 'on_time', 'early_leave'];
+        $status = $statuses[array_rand($statuses)];
+
+        return match ($status) {
             'late' => $this->buildLateFlow($shiftStart, $shiftEnd),
-            'absent' => $this->buildAbsentFlow($shiftStart),
             'early_leave' => $this->buildEarlyLeaveFlow($shiftStart, $shiftEnd),
             default => $this->buildOnTimeFlow($shiftStart, $shiftEnd),
         };
     }
 
-    private function buildDateTime(Carbon $date, string $time): Carbon
+    private function buildDateTime(Carbon $date, string $time, string $timezone): Carbon
     {
-        $timeWithSeconds = strlen($time) === 5 ? $time.':00' : $time;
+        $timeWithSeconds = strlen($time) === 5 ? $time . ':00' : $time;
 
         return Carbon::createFromFormat(
             'Y-m-d H:i:s',
-            $date->format('Y-m-d').' '.$timeWithSeconds,
-            config('app.timezone')
+            $date->format('Y-m-d') . ' ' . $timeWithSeconds,
+            $timezone
         );
     }
 
     private function buildOnTimeFlow(Carbon $shiftStart, Carbon $shiftEnd): array
     {
+        // Check-in: on time or slightly early (0-5 minutes)
         $checkIn = (clone $shiftStart)->addMinutes(random_int(0, 5));
+        // Check-out: on time or slightly late (0-5 minutes)
         $checkOut = (clone $shiftEnd)->subMinutes(random_int(0, 5));
 
         return [
@@ -102,34 +145,21 @@ class AttendanceSeeder extends Seeder
             'time_out' => $checkOut,
             'status' => 'on_time',
             'late_minutes' => 0,
-            'early_leave_minutes' => $shiftEnd->diffInMinutes($checkOut),
+            'early_leave_minutes' => 0,
         ];
     }
 
     private function buildLateFlow(Carbon $shiftStart, Carbon $shiftEnd): array
     {
-        $lateMinutes = random_int(15, 45);
+        // Late: 10-30 minutes late
+        $lateMinutes = random_int(10, 30);
         $checkIn = (clone $shiftStart)->addMinutes($lateMinutes);
-        $checkOut = (clone $shiftEnd)->subMinutes(random_int(0, 15));
+        $checkOut = (clone $shiftEnd)->subMinutes(random_int(0, 10));
 
         return [
             'time_in' => $checkIn,
             'time_out' => $checkOut,
             'status' => 'late',
-            'late_minutes' => $lateMinutes,
-            'early_leave_minutes' => $shiftEnd->diffInMinutes($checkOut),
-        ];
-    }
-
-    private function buildAbsentFlow(Carbon $shiftStart): array
-    {
-        $lateMinutes = random_int(90, 180);
-        $checkIn = (clone $shiftStart)->addMinutes($lateMinutes);
-
-        return [
-            'time_in' => $checkIn,
-            'time_out' => null,
-            'status' => 'absent',
             'late_minutes' => $lateMinutes,
             'early_leave_minutes' => 0,
         ];
@@ -138,7 +168,8 @@ class AttendanceSeeder extends Seeder
     private function buildEarlyLeaveFlow(Carbon $shiftStart, Carbon $shiftEnd): array
     {
         $checkIn = (clone $shiftStart)->addMinutes(random_int(0, 10));
-        $earlyLeave = random_int(30, 90);
+        // Early leave: 15-45 minutes early
+        $earlyLeave = random_int(15, 45);
         $checkOut = (clone $shiftEnd)->subMinutes($earlyLeave);
 
         return [
@@ -150,11 +181,20 @@ class AttendanceSeeder extends Seeder
         ];
     }
 
-    private function randomLatLon(): string
+    private function getLocationLatLon(?int $locationId): string
     {
-        $lat = random_int(-90000000, 90000000) / 1_000_000;
-        $lon = random_int(-180000000, 180000000) / 1_000_000;
+        // Use default coordinates if location not found
+        $defaultLat = '-7.424154';
+        $defaultLon = '109.242088';
 
-        return number_format($lat, 6, '.', '').','.number_format($lon, 6, '.', '');
+        if ($locationId) {
+            $location = \App\Models\Location::find($locationId);
+            if ($location && $location->latitude && $location->longitude) {
+                return number_format((float)$location->latitude, 6, '.', '') . ',' . 
+                       number_format((float)$location->longitude, 6, '.', '');
+            }
+        }
+
+        return $defaultLat . ',' . $defaultLon;
     }
 }

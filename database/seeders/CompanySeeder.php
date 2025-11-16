@@ -12,13 +12,13 @@ class CompanySeeder extends Seeder
     public function run(): void
     {
         \App\Models\Company::updateOrCreate(
-            ['email' => 'info@kebunsawitjakarta.com'],
+            ['email' => 'info@sairnapaor.com'],
             [
-                'name' => 'PT. Kebun Sawit Jakarta',
-                'email' => 'info@kebunsawitjakarta.com',
-                'address' => 'Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta',
-                'latitude' => '-6.208763',
-                'longitude' => '106.845599',
+                'name' => 'PT. Sair Napaor COM',
+                'email' => 'info@sairnapaor.com',
+                'address' => 'Kantor Pusat',
+                'latitude' => '0.000000',
+                'longitude' => '0.000000',
                 'radius_km' => '1000',
                 'attendance_type' => 'location_based',
             ]

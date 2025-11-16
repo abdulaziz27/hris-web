@@ -15,20 +15,23 @@ class OvertimeSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get employees only (not admin/manager)
-        $employees = User::where('role', 'employee')->get();
+        // Get employees only (not admin/manager) from our seeded data
+        $employees = User::where('role', 'employee')
+            ->whereNotNull('shift_kerja_id')
+            ->whereNotNull('location_id')
+            ->get();
 
         if ($employees->isEmpty()) {
-            $this->command->warn('No employees found. Please run EmployeeBulkSeeder first.');
-
+            $this->command->warn('No employees found. Please run UserSeeder first.');
             return;
         }
 
         // Get manager for approval
         $manager = User::whereIn('role', ['manager', 'admin'])->first() ?? $employees->first();
 
-        // Generate 10 overtime requests for employees
-        $selectedEmployees = $employees->random(min(10, $employees->count()));
+        // Generate sample overtime requests (10-15 requests from different employees)
+        $targetCount = min(15, $employees->count());
+        $selectedEmployees = $employees->random($targetCount);
 
         $overtimeReasons = [
             'Menyelesaikan pekerjaan urgent yang tertunda karena hujan',
@@ -41,39 +44,110 @@ class OvertimeSeeder extends Seeder
             'Menyelesaikan pekerjaan yang memerlukan koordinasi tim',
             'Menyelesaikan target panen yang harus selesai hari ini',
             'Menyelesaikan perbaikan mesin yang mendesak',
+            'Menyelesaikan pekerjaan kebun yang tertunda',
+            'Menyelesaikan pengolahan hasil panen',
+            'Menyelesaikan pekerjaan pembibitan yang mendesak',
         ];
 
-        $statuses = ['pending', 'approved', 'approved', 'pending', 'approved', 'approved', 'pending', 'approved', 'pending', 'approved'];
+        $statuses = ['pending', 'approved', 'approved', 'pending', 'approved', 'approved', 'pending', 'approved', 'pending', 'approved', 'approved', 'pending', 'approved'];
+
+        // Get holidays for the period
+        $today = Carbon::today();
+        $twoMonthsAgo = $today->copy()->subMonths(2)->startOfMonth();
+        $holidays = \App\Models\Holiday::whereBetween('date', [
+            $twoMonthsAgo->toDateString(),
+            $today->toDateString()
+        ])->pluck('date')->map(fn($date) => Carbon::parse($date)->toDateString())->toArray();
+
+        $createdCount = 0;
+        $maxAttempts = $targetCount * 3; // Try up to 3x target count to find valid dates
+        $attempt = 0;
 
         foreach ($selectedEmployees as $index => $employee) {
-            // Random date in 2025 (past or near future)
-            $month = rand(1, 12);
-            $day = rand(1, 28);
-            $date = Carbon::create(2025, $month, $day);
+            if ($createdCount >= $targetCount || $attempt >= $maxAttempts) {
+                break;
+            }
 
-            // Random start time (after normal shift end)
-            $startHour = rand(17, 20);
-            $startMinute = rand(0, 59);
+            // Get employee's shift to determine overtime start time
+            $shift = $employee->shiftKerja;
+            if (!$shift) {
+                continue;
+            }
+
+            // Parse shift end time - get raw value from database
+            $shiftEndTimeString = $shift->getRawOriginal('end_time') ?? $shift->end_time?->format('H:i:s');
+            if (!$shiftEndTimeString) {
+                continue;
+            }
+            
+            // Normalize time format (handle both H:i and H:i:s)
+            $normalizedTime = strlen($shiftEndTimeString) === 5 ? $shiftEndTimeString . ':00' : $shiftEndTimeString;
+            $shiftEndTime = Carbon::createFromFormat('H:i:s', $normalizedTime);
+            $shiftEndHour = (int)$shiftEndTime->format('H');
+            $shiftEndMinute = (int)$shiftEndTime->format('i');
+
+            // Try to find a valid workday date
+            $date = null;
+            $dateAttempts = 0;
+            while ($dateAttempts < 10) {
+                $randomDays = rand(0, $today->diffInDays($twoMonthsAgo));
+                $candidateDate = $twoMonthsAgo->copy()->addDays($randomDays);
+                
+                // Check if it's a workday
+                if (!$candidateDate->isWeekend() && !in_array($candidateDate->toDateString(), $holidays)) {
+                    $date = $candidateDate;
+                    break;
+                }
+                $dateAttempts++;
+            }
+
+            // Skip if no valid date found
+            if (!$date) {
+                $attempt++;
+                continue;
+            }
+
+            // Start time: after shift end (15-30 minutes after shift end)
+            $startHour = $shiftEndHour;
+            $startMinute = $shiftEndMinute + rand(15, 30);
+            if ($startMinute >= 60) {
+                $startHour++;
+                $startMinute -= 60;
+            }
             $startTime = Carbon::createFromTime($startHour, $startMinute, 0);
 
-            // Random end time (1-4 hours after start)
+            // End time: 1-4 hours after start
             $durationHours = rand(1, 4);
             $endTime = (clone $startTime)->addHours($durationHours);
 
             $status = $statuses[$index % count($statuses)];
 
-            Overtime::create([
+            $overtimeData = [
                 'user_id' => $employee->id,
                 'date' => $date->toDateString(),
-                'start_time' => $startTime->format('H:i:s'),
-                'end_time' => $endTime->format('H:i:s'),
-                'reason' => $overtimeReasons[array_rand($overtimeReasons)],
+                'start_time' => $startTime->format('H:i'),
+                'end_time' => $endTime->format('H:i'),
+                'reason' => $overtimeReasons[$index % count($overtimeReasons)],
                 'status' => $status,
-                'created_at' => $date->subDays(rand(1, 3)),
-                'updated_at' => $date,
-            ]);
+            ];
+
+            // If approved, add approval info
+            if ($status === 'approved') {
+                $approvedAt = $date->copy()->subDays(rand(1, 3));
+                $overtimeData['approved_by'] = $manager->id;
+                $overtimeData['approved_at'] = $approvedAt;
+                $overtimeData['created_at'] = $approvedAt->subDays(rand(1, 2));
+                $overtimeData['updated_at'] = $approvedAt;
+            } else {
+                $overtimeData['created_at'] = $date->copy()->subDays(rand(1, 3));
+                $overtimeData['updated_at'] = $date->copy()->subDays(rand(1, 3));
+            }
+
+            Overtime::create($overtimeData);
+            $createdCount++;
+            $attempt++;
         }
 
-        $this->command->info('✅ Created 10 overtime requests for employees (2025).');
+        $this->command->info('✅ Created ' . $createdCount . ' sample overtime requests from seeded employees.');
     }
 }

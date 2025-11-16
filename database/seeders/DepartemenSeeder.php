@@ -12,10 +12,11 @@ class DepartemenSeeder extends Seeder
     public function run(): void
     {
         $departemens = [
-            ['name' => 'Operasional Lapangan', 'description' => 'Departemen yang mengelola operasional di lapangan termasuk penanaman, pembibitan, dan pemeliharaan tanaman'],
-            ['name' => 'Pemanenan & Pengolahan', 'description' => 'Departemen yang mengelola proses pemanenan hasil kebun dan pengolahan produk'],
-            ['name' => 'Administrasi & Keuangan', 'description' => 'Departemen yang mengelola administrasi umum, keuangan, dan dokumentasi perusahaan'],
-            ['name' => 'Pemeliharaan Lingkungan', 'description' => 'Departemen yang mengelola pemeliharaan lahan, konservasi, dan kelestarian lingkungan'],
+            ['name' => 'Pembibitan', 'description' => 'Departemen yang mengelola pembibitan dan persemaian tanaman'],
+            ['name' => 'Kantor/Umum', 'description' => 'Departemen yang mengelola administrasi umum, keuangan, dan operasional kantor'],
+            ['name' => 'Tanaman/TBS', 'description' => 'Departemen yang mengelola tanaman dan Tandan Buah Segar (TBS)'],
+            ['name' => 'SUS BHT', 'description' => 'Departemen yang mengelola SUS BHT'],
+            ['name' => 'Kelapa Kopyor', 'description' => 'Departemen yang mengelola kelapa kopyor'],
         ];
 
         foreach ($departemens as $departemen) {
@@ -25,6 +26,6 @@ class DepartemenSeeder extends Seeder
             );
         }
 
-        $this->command->info('4 departemens created/updated successfully.');
+        $this->command->info('5 departemens created/updated successfully.');
     }
 }

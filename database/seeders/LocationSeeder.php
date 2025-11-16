@@ -13,67 +13,101 @@ class LocationSeeder extends Seeder
     public function run(): void
     {
         $locations = [
-            // Kantor Pusat
             [
-                'name' => 'Kantor Pusat',
-                'address' => 'Jl. Raya Purwokerto Timur No. 123, Kec. Purwokerto Timur, Kabupaten Banyumas, Jawa Tengah',
+                'name' => 'Kantor',
+                'address' => 'Kantor Pusat',
                 'latitude' => '-7.424154',
                 'longitude' => '109.242088',
                 'radius_km' => '1000',
                 'is_active' => true,
                 'attendance_type' => 'hybrid',
-                'description' => 'Kantor pusat perusahaan dengan fasilitas lengkap',
+                'description' => 'Kantor pusat perusahaan',
+                'nilai_hk' => 0.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
             ],
-            // 5 Kebun
             [
-                'name' => 'Kebun Sawit Purwokerto Timur',
-                'address' => 'Jl. Raya Purwokerto Timur, Kec. Purwokerto Timur, Kabupaten Banyumas, Jawa Tengah',
+                'name' => 'Kalianta',
+                'address' => 'Kebun Kalianta',
                 'latitude' => '-7.424154',
                 'longitude' => '109.242088',
                 'radius_km' => '1000',
                 'is_active' => true,
                 'attendance_type' => 'location_based_only',
-                'description' => 'Lokasi kebun sawit utama di area Purwokerto Timur dengan luas 100 hektar',
+                'description' => 'Lokasi kebun Kalianta',
+                'nilai_hk' => 140351.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
             ],
             [
-                'name' => 'Kebun Karet Banyumas',
-                'address' => 'Desa Kalisube, Kec. Banyumas, Kabupaten Banyumas, Jawa Tengah',
-                'latitude' => '-7.515342',
-                'longitude' => '109.312567',
-                'radius_km' => '1000',
-                'is_active' => true,
-                'attendance_type' => 'hybrid',
-                'description' => 'Kebun karet dengan luas 50 hektar, produksi lateks harian',
-            ],
-            [
-                'name' => 'Kebun Pembibitan Cilongok',
-                'address' => 'Desa Pernasidi, Kec. Cilongok, Kabupaten Banyumas, Jawa Tengah',
-                'latitude' => '-7.432891',
-                'longitude' => '109.145673',
+                'name' => 'Dalu-Dalu',
+                'address' => 'Kebun Dalu-Dalu',
+                'latitude' => '-7.424154',
+                'longitude' => '109.242088',
                 'radius_km' => '1000',
                 'is_active' => true,
                 'attendance_type' => 'location_based_only',
-                'description' => 'Lokasi pembibitan dan persemaian tanaman dengan teknologi modern',
+                'description' => 'Lokasi kebun Dalu-Dalu',
+                'nilai_hk' => 127000.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
             ],
             [
-                'name' => 'Kebun Sawit Ajibarang',
-                'address' => 'Desa Karangnangka, Kec. Ajibarang, Kabupaten Banyumas, Jawa Tengah',
-                'latitude' => '-7.382456',
-                'longitude' => '109.123789',
+                'name' => 'P.Mandrsah',
+                'address' => 'Kebun P.Mandrsah',
+                'latitude' => '-7.424154',
+                'longitude' => '109.242088',
                 'radius_km' => '1000',
                 'is_active' => true,
                 'attendance_type' => 'location_based_only',
-                'description' => 'Kebun sawit area Ajibarang dengan luas 150 hektar',
+                'description' => 'Lokasi kebun P.Mandrsah',
+                'nilai_hk' => 100000.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
             ],
             [
-                'name' => 'Kebun Kelapa Sawit Sumbang',
-                'address' => 'Desa Banjarsari, Kec. Sumbang, Kabupaten Banyumas, Jawa Tengah',
-                'latitude' => '-7.456123',
-                'longitude' => '109.289456',
+                'name' => 'Sarolangun',
+                'address' => 'Kebun Sarolangun',
+                'latitude' => '-7.424154',
+                'longitude' => '109.242088',
                 'radius_km' => '1000',
                 'is_active' => true,
-                'attendance_type' => 'hybrid',
-                'description' => 'Kebun kelapa sawit di area Sumbang dengan sistem irigasi modern',
+                'attendance_type' => 'location_based_only',
+                'description' => 'Lokasi kebun Sarolangun',
+                'nilai_hk' => 108875.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
+            ],
+            [
+                'name' => 'T.Dalam/P.Maria',
+                'address' => 'Kebun T.Dalam/P.Maria',
+                'latitude' => '-7.424154',
+                'longitude' => '109.242088',
+                'radius_km' => '1000',
+                'is_active' => true,
+                'attendance_type' => 'location_based_only',
+                'description' => 'Lokasi kebun T.Dalam/P.Maria',
+                'nilai_hk' => 119702.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
+            ],
+            [
+                'name' => 'Simirik/Pargarutan',
+                'address' => 'Kebun Simirik/Pargarutan',
+                'latitude' => '-7.424154',
+                'longitude' => '109.242088',
+                'radius_km' => '1000',
+                'is_active' => true,
+                'attendance_type' => 'location_based_only',
+                'description' => 'Lokasi kebun Simirik/Pargarutan',
+                'nilai_hk' => 100000.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
+            ],
+            [
+                'name' => 'Unit Usaha Marihat',
+                'address' => 'Unit Usaha Marihat',
+                'latitude' => '-7.424154',
+                'longitude' => '109.242088',
+                'radius_km' => '1000',
+                'is_active' => true,
+                'attendance_type' => 'location_based_only',
+                'description' => 'Lokasi Unit Usaha Marihat',
+                'nilai_hk' => 70000.00,
+                'timezone' => 'Asia/Jakarta', // WIB (UTC+7)
             ],
         ];
 
@@ -84,6 +118,6 @@ class LocationSeeder extends Seeder
             );
         }
 
-        $this->command->info('6 locations created/updated successfully (1 Kantor Pusat + 5 Kebun).');
+        $this->command->info('8 locations created/updated successfully (Kantor, Kalianta, Dalu-Dalu, P.Mandrsah, Sarolangun, T.Dalam/P.Maria, Simirik/Pargarutan, Unit Usaha Marihat).');
     }
 }

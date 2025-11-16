@@ -45,9 +45,25 @@ class LeaveTestingSeeder extends Seeder
             }
         }
 
-        // Create 10 leave requests (only employees, not admin/manager)
-        $employeeUsers = $users->where('role', 'employee')->take(10);
+        // Get 8 employees from 8 different locations
+        $employeeUsers = $users->where('role', 'employee')->whereNotNull('location_id');
         $manager = $users->whereIn('role', ['manager', 'admin'])->first() ?? $users->first();
+
+        // Group employees by location and pick one from each location
+        $employeesByLocation = $employeeUsers->groupBy('location_id');
+        $selectedEmployees = collect();
+        
+        foreach ($employeesByLocation as $locationId => $locationEmployees) {
+            if ($selectedEmployees->count() >= 8) {
+                break;
+            }
+            $selectedEmployees->push($locationEmployees->first());
+        }
+
+        if ($selectedEmployees->isEmpty()) {
+            $this->command->warn('No employees with locations found. Please ensure employees have location_id assigned.');
+            return;
+        }
 
         $realLeaveReasons = [
             'Izin cuti untuk menikahkan anak di kampung',
@@ -58,19 +74,13 @@ class LeaveTestingSeeder extends Seeder
             'Cuti untuk mengurus dokumen penting di kelurahan',
             'Izin cuti karena ada acara keluarga besar',
             'Cuti untuk merawat anak yang sedang sakit',
-            'Izin cuti untuk menghadiri pernikahan saudara',
-            'Cuti tahunan untuk refreshing dan istirahat',
         ];
 
-        $leaveCount = 0;
-        foreach ($employeeUsers as $user) {
-            if ($leaveCount >= 10) {
-                break;
-            }
-            
+        $statuses = ['pending', 'approved', 'approved', 'pending', 'approved', 'approved', 'pending', 'approved'];
+
+        foreach ($selectedEmployees as $index => $user) {
             $leaveType = $leaveTypes->random();
-            $statuses = ['pending', 'approved', 'approved', 'pending', 'approved'];
-            $status = $statuses[array_rand($statuses)];
+            $status = $statuses[$index % count($statuses)];
 
             $startDate = \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 25));
             $totalDays = rand(1, 5);
@@ -88,7 +98,7 @@ class LeaveTestingSeeder extends Seeder
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
                     'total_days' => $totalDays,
-                    'reason' => $realLeaveReasons[array_rand($realLeaveReasons)],
+                    'reason' => $realLeaveReasons[$index % count($realLeaveReasons)],
                     'status' => 'approved',
                     'approved_by' => $manager->id,
                     'approved_at' => $approvedAt,
@@ -102,16 +112,14 @@ class LeaveTestingSeeder extends Seeder
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
                     'total_days' => $totalDays,
-                    'reason' => $realLeaveReasons[array_rand($realLeaveReasons)],
+                    'reason' => $realLeaveReasons[$index % count($realLeaveReasons)],
                     'status' => 'pending',
                     'created_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
                     'updated_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
                 ]);
             }
-            
-            $leaveCount++;
         }
 
-        $this->command->info('✅ Created 10 leave requests successfully.');
+        $this->command->info('✅ Created ' . $selectedEmployees->count() . ' leave requests from ' . $selectedEmployees->count() . ' different locations successfully.');
     }
 }

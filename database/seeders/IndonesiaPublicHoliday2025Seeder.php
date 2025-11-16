@@ -15,26 +15,27 @@ class IndonesiaPublicHoliday2025Seeder extends Seeder
         $holidays = [
             // Januari
             ['date' => '2025-01-01', 'name' => 'Tahun Baru Masehi', 'is_official' => true],
-
-            // Februari
-            ['date' => '2025-02-12', 'name' => 'Tahun Baru Imlek 2576 Kongzili', 'is_official' => true],
+            ['date' => '2025-01-27', 'name' => 'Isra Mi\'raj Nabi Muhammad SAW', 'is_official' => true],
+            ['date' => '2025-01-29', 'name' => 'Tahun Baru Imlek 2576 Kongzili', 'is_official' => true],
 
             // Maret
-            ['date' => '2025-03-29', 'name' => 'Isra Mi\'raj Nabi Muhammad SAW', 'is_official' => true],
-            ['date' => '2025-03-30', 'name' => 'Hari Raya Idul Fitri 1446 H', 'is_official' => true],
-            ['date' => '2025-03-31', 'name' => 'Hari Raya Idul Fitri 1446 H / Nyepi Tahun Baru Saka 1947', 'is_official' => true],
+            ['date' => '2025-03-29', 'name' => 'Hari Suci Nyepi (Tahun Baru Saka 1947)', 'is_official' => true],
+            ['date' => '2025-03-31', 'name' => 'Hari Raya Idul Fitri 1446 Hijriah', 'is_official' => true],
 
             // April
-            ['date' => '2025-04-18', 'name' => 'Wafat Isa Al Masih', 'is_official' => true],
+            ['date' => '2025-04-01', 'name' => 'Hari Raya Idul Fitri 1446 Hijriah', 'is_official' => true],
+            ['date' => '2025-04-18', 'name' => 'Wafat Yesus Kristus', 'is_official' => true],
+            ['date' => '2025-04-20', 'name' => 'Hari Paskah', 'is_official' => true],
 
             // Mei
             ['date' => '2025-05-01', 'name' => 'Hari Buruh Internasional', 'is_official' => true],
-            ['date' => '2025-05-12', 'name' => 'Kenaikan Isa Al Masih / Hari Raya Waisak 2569', 'is_official' => true],
+            ['date' => '2025-05-12', 'name' => 'Hari Raya Waisak 2569 BE', 'is_official' => true],
+            ['date' => '2025-05-29', 'name' => 'Kenaikan Yesus Kristus', 'is_official' => true],
 
             // Juni
             ['date' => '2025-06-01', 'name' => 'Hari Lahir Pancasila', 'is_official' => true],
-            ['date' => '2025-06-07', 'name' => 'Hari Raya Idul Adha 1446 H', 'is_official' => true],
-            ['date' => '2025-06-27', 'name' => 'Tahun Baru Islam 1447 H', 'is_official' => true],
+            ['date' => '2025-06-06', 'name' => 'Hari Raya Idul Adha 1446 Hijriah', 'is_official' => true],
+            ['date' => '2025-06-27', 'name' => 'Tahun Baru Islam 1447 Hijriah', 'is_official' => true],
 
             // Agustus
             ['date' => '2025-08-17', 'name' => 'Hari Kemerdekaan Republik Indonesia', 'is_official' => true],
@@ -45,13 +46,17 @@ class IndonesiaPublicHoliday2025Seeder extends Seeder
             // Desember
             ['date' => '2025-12-25', 'name' => 'Hari Raya Natal', 'is_official' => true],
 
-            // Cuti Bersama (common collective leave days - adjust as needed)
-            ['date' => '2025-03-28', 'name' => 'Cuti Bersama Idul Fitri', 'is_official' => false],
-            ['date' => '2025-04-01', 'name' => 'Cuti Bersama Idul Fitri', 'is_official' => false],
-            ['date' => '2025-04-02', 'name' => 'Cuti Bersama Idul Fitri', 'is_official' => false],
-            ['date' => '2025-04-03', 'name' => 'Cuti Bersama Idul Fitri', 'is_official' => false],
-            ['date' => '2025-06-06', 'name' => 'Cuti Bersama Idul Adha', 'is_official' => false],
-            ['date' => '2025-12-26', 'name' => 'Cuti Bersama Natal', 'is_official' => false],
+            // Cuti Bersama (sesuai SKB 3 Menteri)
+            ['date' => '2025-01-28', 'name' => 'Cuti Bersama Tahun Baru Imlek', 'is_official' => false],
+            ['date' => '2025-03-28', 'name' => 'Cuti Bersama Hari Suci Nyepi', 'is_official' => false],
+            ['date' => '2025-04-02', 'name' => 'Cuti Bersama Idul Fitri 1446 Hijriah', 'is_official' => false],
+            ['date' => '2025-04-03', 'name' => 'Cuti Bersama Idul Fitri 1446 Hijriah', 'is_official' => false],
+            ['date' => '2025-04-04', 'name' => 'Cuti Bersama Idul Fitri 1446 Hijriah', 'is_official' => false],
+            ['date' => '2025-04-07', 'name' => 'Cuti Bersama Idul Fitri 1446 Hijriah', 'is_official' => false],
+            ['date' => '2025-05-13', 'name' => 'Cuti Bersama Hari Raya Waisak', 'is_official' => false],
+            ['date' => '2025-05-30', 'name' => 'Cuti Bersama Kenaikan Yesus Kristus', 'is_official' => false],
+            ['date' => '2025-06-09', 'name' => 'Cuti Bersama Idul Adha 1446 Hijriah', 'is_official' => false],
+            ['date' => '2025-12-26', 'name' => 'Cuti Bersama Hari Raya Natal', 'is_official' => false],
         ];
 
         foreach ($holidays as $holiday) {
