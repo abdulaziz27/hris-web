@@ -72,11 +72,12 @@ class Payroll extends Model
                     $payroll->percentage = round(($payroll->present_days / $payroll->standard_workdays) * 100, 2);
             }
 
-                // Only calculate salary fields if status is draft (to preserve approved/paid payrolls)
+                // Only calculate salary fields if status is draft (to preserve approved payrolls)
                 if ($payroll->status === 'draft' || !$payroll->exists) {
-                    // Calculate selisih_hk = hk_review - present_days
-                    if ($payroll->hk_review !== null && $payroll->present_days !== null) {
-                        $payroll->selisih_hk = $payroll->hk_review - $payroll->present_days;
+                    // Calculate selisih_hk = present_days - standard_workdays
+                    // hk_review tidak digunakan, langsung dari present_days
+                    if ($payroll->present_days !== null && $payroll->standard_workdays !== null) {
+                        $payroll->selisih_hk = $payroll->present_days - $payroll->standard_workdays;
             }
 
             // Calculate estimated_salary = nilai_hk * present_days
@@ -84,27 +85,27 @@ class Payroll extends Model
                         $payroll->estimated_salary = round($payroll->nilai_hk * $payroll->present_days, 2);
             }
 
-                    // Calculate final_salary = nilai_hk * hk_review (prioritas hk_review)
+                    // Calculate final_salary = nilai_hk * present_days (langsung dari kehadiran)
+                    // hk_review tidak digunakan, hanya untuk jaga-jaga di masa depan
                     if ($payroll->nilai_hk !== null && $payroll->nilai_hk > 0) {
-                        if ($payroll->hk_review !== null && $payroll->hk_review > 0) {
-                            $payroll->final_salary = round($payroll->nilai_hk * $payroll->hk_review, 2);
-                        } elseif ($payroll->estimated_salary !== null) {
-                            // If no hk_review, use estimated_salary
-                    $payroll->final_salary = $payroll->estimated_salary;
-                }
-            }
+                        // Langsung gunakan estimated_salary (nilai_hk × present_days)
+                        if ($payroll->estimated_salary !== null) {
+                            $payroll->final_salary = $payroll->estimated_salary;
+                        }
+                    }
 
                     // Calculate basic_salary = nilai_hk * standard_workdays (untuk informasi)
                     if ($payroll->nilai_hk !== null && $payroll->nilai_hk > 0 && $payroll->standard_workdays !== null && $payroll->standard_workdays > 0) {
                         $payroll->basic_salary = round($payroll->nilai_hk * $payroll->standard_workdays, 2);
                     }
 
+                    // hk_review tidak digunakan, tapi tetap di-set untuk jaga-jaga di masa depan
                     // Set default hk_review = present_days if null (only for new records)
                     if ($payroll->hk_review === null && $payroll->present_days !== null && ! $payroll->exists) {
                 $payroll->hk_review = $payroll->present_days;
                     }
                 }
-                // If status is approved/paid, don't recalculate salary fields (preserve existing values)
+                // If status is approved, don't recalculate salary fields (preserve existing values)
             } catch (\Exception $e) {
                 // Log error but don't break save
                 \Log::error('Error in Payroll booted method: ' . $e->getMessage());

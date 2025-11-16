@@ -65,6 +65,24 @@ class UserForm
                     ->searchable()
                     ->preload()
                     ->helperText('Pilih 1 shift kerja untuk karyawan'),
+                TextInput::make('position')
+                    ->label('Jobdesk / Posisi')
+                    ->maxLength(255)
+                    ->placeholder('Contoh: Security, Frunning Tanaman, Emplasment, dll')
+                    ->helperText(function () {
+                        // Get some common examples for helper text
+                        $examples = \App\Models\User::whereNotNull('position')
+                            ->distinct()
+                            ->orderBy('position')
+                            ->pluck('position')
+                            ->take(10)
+                            ->implode(', ');
+                        
+                        return $examples 
+                            ? 'Contoh yang sudah ada: ' . $examples . ' (bisa ketik bebas)'
+                            : 'Deskripsi pekerjaan spesifik karyawan. Bisa ketik bebas sesuai kebutuhan.';
+                    })
+                    ->autocomplete('off'),
                 Select::make('location_id')
                     ->label('Lokasi Kerja')
                     ->relationship('location', 'name')
@@ -96,7 +114,9 @@ class UserForm
                         'daily' => 'Harian',
                     ])
                     ->default('monthly')
-                    ->helperText('Tipe perhitungan gaji'),
+                    ->helperText('Tipe perhitungan gaji')
+                    ->hidden() // Hidden karena belum diimplementasikan, sistem masih menggunakan nilai_hk
+                    ->dehydrated(), // Tetap simpan ke database jika diisi
                 FileUpload::make('image_url')
                     ->label('Foto Profil')
                     ->image()

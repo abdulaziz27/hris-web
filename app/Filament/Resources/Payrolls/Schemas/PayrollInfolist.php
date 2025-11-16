@@ -38,8 +38,10 @@ class PayrollInfolist
                         TextEntry::make('present_days')
                             ->label('Hari Hadir'),
 
+                        // hk_review di-hide karena default = present_days
                         TextEntry::make('hk_review')
-                            ->label('HK Review'),
+                            ->label('HK Review')
+                            ->hidden(),
 
                         TextEntry::make('nilai_hk')
                             ->label('Nilai HK')
@@ -54,17 +56,20 @@ class PayrollInfolist
                             }),
 
                         TextEntry::make('estimated_salary')
-                            ->label('Estimasi Gaji')
+                            ->label('Gaji')
                             ->formatStateUsing(function ($state) {
                                 return 'Rp ' . number_format($state, 0, ',', '.');
-                            }),
+                            })
+                            ->extraAttributes(['class' => 'font-bold']),
 
+                        // final_salary di-hide karena sama dengan estimated_salary
+                        // Tetap ada di database untuk jaga-jaga di masa depan
                         TextEntry::make('final_salary')
                             ->label('Final Gaji')
                             ->formatStateUsing(function ($state) {
                                 return 'Rp ' . number_format($state, 0, ',', '.');
                             })
-                            ->extraAttributes(['class' => 'font-bold']),
+                            ->hidden(),
 
                         TextEntry::make('percentage')
                             ->label('Persentase')
@@ -80,13 +85,11 @@ class PayrollInfolist
                             ->color(fn (string $state): string => match ($state) {
                                 'draft' => 'gray',
                                 'approved' => 'success',
-                                'paid' => 'info',
                                 default => 'gray',
                             })
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'draft' => 'Draft',
                                 'approved' => 'Disetujui',
-                                'paid' => 'Sudah Dibayar',
                                 default => $state,
                             }),
 

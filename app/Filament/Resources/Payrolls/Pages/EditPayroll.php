@@ -30,19 +30,6 @@ class EditPayroll extends EditRecord
                     $this->dispatch('notify', type: 'success', message: 'Payroll berhasil disetujui.');
                 }),
 
-            Action::make('markAsPaid')
-                ->label('Tandai Sudah Dibayar')
-                ->icon('heroicon-o-banknotes')
-                ->color('info')
-                ->requiresConfirmation()
-                ->visible(fn () => $this->record->status === 'approved')
-                ->action(function () {
-                    $this->record->update([
-                        'status' => 'paid',
-                    ]);
-                    $this->dispatch('notify', type: 'success', message: 'Payroll ditandai sudah dibayar.');
-                }),
-
             Action::make('recalculate')
                 ->label('Hitung Ulang')
                 ->icon('heroicon-o-arrow-path')

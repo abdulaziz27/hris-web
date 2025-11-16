@@ -73,46 +73,50 @@ class PayrollForm
                         TextInput::make('present_days')
                             ->label('Hari Hadir')
                             ->numeric()
-                            ->disabled()
-                                    ->dehydrated(true)
-                            ->helperText('Total kehadiran (dihitung otomatis dari attendance)'),
+                            ->minValue(0)
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Recalculate salary fields when present_days is manually changed
+                                try {
+                                    $presentDays = $state !== null && $state !== '' ? (int) $state : 0;
+                                    $nilaiHKValue = $get('nilai_hk');
+                                    $nilaiHK = $nilaiHKValue !== null && $nilaiHKValue !== '' ? (float) $nilaiHKValue : 0;
+                                    $standardWorkdays = (int) ($get('standard_workdays') ?? 21);
+                                    
+                                    if ($nilaiHK > 0 && $presentDays >= 0) {
+                                        // Recalculate estimated_salary and final_salary
+                                        $estimatedSalary = PayrollCalculator::calculateEstimatedSalary($nilaiHK, $presentDays);
+                                        $set('estimated_salary', $estimatedSalary);
+                                        $set('final_salary', $estimatedSalary); // final_salary = estimated_salary
+                                        
+                                        // Recalculate percentage
+                                        if ($standardWorkdays > 0) {
+                                            $percentage = PayrollCalculator::calculatePercentage($presentDays, $standardWorkdays);
+                                            $set('percentage', $percentage);
+                                        }
+                                        
+                                        // Recalculate selisih_hk
+                                        $selisihHK = $presentDays - $standardWorkdays;
+                                        $set('selisih_hk', $selisihHK);
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::error('Error in present_days afterStateUpdated: ' . $e->getMessage());
+                                }
+                            })
+                            ->helperText('Total kehadiran (dihitung otomatis dari attendance). Bisa di-edit manual jika ada kesalahan sistem atau koreksi.'),
 
+                        // hk_review tidak digunakan untuk perhitungan, hanya untuk jaga-jaga di masa depan
+                        // Final salary langsung dari present_days (estimated_salary)
+                        // Jika perlu adjustment, edit langsung di Excel (adjust present_days atau final_salary)
                         TextInput::make('hk_review')
                             ->label('HK Review')
                             ->numeric()
-                                    ->required()
-                                    ->minValue(0)
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, $set, $get) {
-                                        try {
-                                            // Only recalculate final_salary and selisih_hk when hk_review changes
-                                            $hkReview = $state !== null && $state !== '' ? (int) $state : null;
-                                            
-                                            if ($hkReview === null || $hkReview < 0) {
-                                                return;
-                                            }
-                                            
-                                            $standardWorkdays = (int) ($get('standard_workdays') ?? 21);
-                                            
-                                            // Get nilai_hk from form
-                                            $nilaiHKValue = $get('nilai_hk');
-                                            $nilaiHK = $nilaiHKValue !== null && $nilaiHKValue !== '' ? (float) $nilaiHKValue : 0;
-                                            
-                                            if ($nilaiHK > 0 && $hkReview >= 0) {
-                                                // Calculate final salary based on hk_review
-                                                $finalSalary = PayrollCalculator::calculateFinalSalary($nilaiHK, $hkReview);
-                                                $set('final_salary', $finalSalary);
-                                                
-                                                // Calculate selisih HK
-                                                $selisihHK = PayrollCalculator::calculateSelisihHK($hkReview, $standardWorkdays);
-                                                $set('selisih_hk', $selisihHK);
-                                            }
-                                        } catch (\Exception $e) {
-                                            // Silently handle errors to prevent form breaking
-                                            \Log::error('Error in hk_review afterStateUpdated: ' . $e->getMessage());
-                                        }
-                            })
-                                    ->helperText('Review manual hari kerja (default: sama dengan Hari Hadir). Mengubah ini akan mengupdate Final Gaji.'),
+                            ->minValue(0)
+                            ->default(fn ($get) => $get('present_days') ?? 0)
+                            ->hidden() // Hidden karena tidak digunakan
+                            ->dehydrated() // Tetap simpan ke database untuk jaga-jaga
+                            ->disabled(), // Disabled karena tidak digunakan
 
                                 TextInput::make('percentage')
                                     ->label('Persentase')
@@ -146,34 +150,35 @@ class PayrollForm
                                     ->numeric()
                                     ->disabled()
                                     ->dehydrated(true)
-                                    ->helperText('Selisih = HK Review - Hari Kerja Standar'),
+                                    ->helperText('Selisih = Hari Hadir - Hari Kerja Standar (langsung dari kehadiran)'),
                             ]),
 
                         Grid::make(3)
                             ->schema([
                         TextInput::make('estimated_salary')
-                            ->label('Estimasi Gaji')
+                            ->label('Gaji')
                             ->numeric()
                             ->prefix('Rp')
                             ->disabled()
                                     ->dehydrated(true)
-                            ->helperText('Estimasi = Nilai HK × Hari Hadir'),
+                            ->helperText('Gaji = Nilai HK × Hari Hadir. Jika perlu adjustment, edit langsung di Excel (adjust present_days atau gaji)')
+                            ->extraAttributes(['class' => 'font-bold']),
 
+                        // final_salary di-hide karena sama dengan estimated_salary
+                        // Tetap ada di database untuk jaga-jaga di masa depan
                         TextInput::make('final_salary')
                             ->label('Final Gaji')
                             ->numeric()
                             ->prefix('Rp')
-                            ->disabled()
-                                    ->dehydrated(true)
-                                    ->helperText('Final = Nilai HK × HK Review')
-                                    ->extraAttributes(['class' => 'font-bold']),
+                            ->hidden()
+                            ->dehydrated(true)
+                            ->disabled(),
 
                         Select::make('status')
                             ->label('Status')
                             ->options([
                                 'draft' => 'Draft',
                                 'approved' => 'Disetujui',
-                                'paid' => 'Sudah Dibayar',
                             ])
                             ->default('draft')
                             ->required(),
@@ -183,7 +188,7 @@ class PayrollForm
                             ->label('Catatan')
                             ->rows(3)
                             ->columnSpanFull()
-                            ->placeholder('Catatan tambahan untuk payroll ini'),
+                            ->placeholder('Catatan tambahan untuk payroll ini. Contoh: "Koreksi hari hadir dari 10 menjadi 11 karena kesalahan sistem absensi tanggal X"'),
                     ]),
             ]);
     }
@@ -247,41 +252,47 @@ class PayrollForm
         $set('basic_salary', $basicSalary);
 
             // Calculate present days (only if period is set and valid, with location timezone awareness)
-        $start = $period->copy()->startOfMonth();
-        $end = $period->copy()->endOfMonth();
-        $user = \App\Models\User::find($userId);
-        $presentDays = PayrollCalculator::calculatePresentDays($userId, $start, $end, $user->location_id ?? null);
-        $set('present_days', $presentDays);
+            // Hanya set jika belum ada nilai (untuk tidak override edit manual)
+            $currentPresentDays = $get('present_days');
+            if ($currentPresentDays === null || $currentPresentDays === '' || $currentPresentDays === 0) {
+                $start = $period->copy()->startOfMonth();
+                $end = $period->copy()->endOfMonth();
+                $user = \App\Models\User::find($userId);
+                $presentDays = PayrollCalculator::calculatePresentDays($userId, $start, $end, $user->location_id ?? null);
+                $set('present_days', $presentDays);
+            } else {
+                // Gunakan nilai yang sudah ada (bisa dari edit manual)
+                $presentDays = (int) $currentPresentDays;
+            }
 
-            // Get hk_review from form (don't override if already set)
-        $hkReview = $get('hk_review');
-            if ($hkReview === null || $hkReview === '' || $hkReview === 0) {
-                // Only set default if not set or is 0
-                if ($presentDays > 0) {
-                    $hkReview = $presentDays;
-            $set('hk_review', $presentDays);
-                } else {
-                    $hkReview = 0;
-                }
-        } else {
-            $hkReview = (int) $hkReview;
-        }
+            // hk_review tidak digunakan untuk perhitungan, hanya untuk jaga-jaga di masa depan
+            // Tetap di-set default = present_days untuk konsistensi data
 
-        // Calculate estimated salary
+        // Calculate estimated salary = nilai_hk × present_days
         $estimatedSalary = PayrollCalculator::calculateEstimatedSalary($nilaiHK, $presentDays);
         $set('estimated_salary', $estimatedSalary);
 
-            // Calculate final salary (based on hk_review)
-        $finalSalary = PayrollCalculator::calculateFinalSalary($nilaiHK, $hkReview);
+        // Calculate final salary = estimated_salary (langsung dari present_days)
+        // hk_review tidak digunakan, hanya untuk jaga-jaga di masa depan
+        $finalSalary = $estimatedSalary; // Langsung dari present_days
         $set('final_salary', $finalSalary);
 
         // Calculate percentage
         $percentage = PayrollCalculator::calculatePercentage($presentDays, $standardWorkdays);
         $set('percentage', $percentage);
 
-        // Calculate selisih HK
-        $selisihHK = PayrollCalculator::calculateSelisihHK($hkReview, $standardWorkdays);
+        // Calculate selisih HK = present_days - standard_workdays
+        // hk_review tidak digunakan, langsung dari present_days
+        $selisihHK = $presentDays - $standardWorkdays;
         $set('selisih_hk', $selisihHK);
+        
+        // hk_review tetap di-set untuk jaga-jaga di masa depan (tidak digunakan untuk perhitungan)
+        // Set default = present_days untuk konsistensi data
+        if ($presentDays > 0) {
+            $set('hk_review', $presentDays);
+        } else {
+            $set('hk_review', 0);
+        }
         } catch (\Exception $e) {
             // Log error but don't break the form
             \Log::error('Error in calculatePayroll: ' . $e->getMessage());

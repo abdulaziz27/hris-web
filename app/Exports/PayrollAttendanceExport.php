@@ -58,6 +58,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
     protected Carbon $startDate;
     protected Carbon $endDate;
     protected Location $location;
+    protected array $payrollData = []; // Store payroll data for each user (key: user_id)
 
     public function __construct(Carbon $startDate, Carbon $endDate, Location $location)
     {
@@ -91,12 +92,10 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
         $data = collect();
 
         foreach ($users as $user) {
-            // Get payroll for this period
+            // Get payroll for this period (exact match dengan start of month)
+            $period = $this->startDate->copy()->startOfMonth();
             $payroll = Payroll::where('user_id', $user->id)
-                ->whereBetween('period', [
-                    $this->startDate->startOfMonth()->toDateString(),
-                    $this->endDate->endOfMonth()->toDateString()
-                ])
+                ->where('period', $period->toDateString())
                 ->first();
 
             $row = [
@@ -125,11 +124,17 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
             // HK Review and Selisih HK are hidden - Estimasi Gaji = Nilai HK × Hadir
             // Sesuai Hasil Wawancara column removed
             // Jobdesk = user.position (from master data)
-            // Hadir will be calculated by formula (SUM of attendance columns), not stored here
+            // Hadir: gunakan present_days dari payroll jika ada dan sudah approved, otherwise formula SUM
             if ($payroll) {
+                // Store payroll data for use in AfterSheet
+                $this->payrollData[$user->id] = [
+                    'present_days' => $payroll->present_days,
+                    'status' => $payroll->status,
+                ];
+                
                 $row[] = $payroll->standard_workdays ?? 0;
-                // Hadir will be formula: SUM of attendance columns (1/0 values)
-                $row[] = 0; // Placeholder, will be replaced by formula in AfterSheet
+                // Hadir: akan di-set di AfterSheet (nilai jika approved, formula jika draft)
+                $row[] = 0; // Placeholder, will be replaced in AfterSheet
                 // Persentase will be formula: (Hadir / Hari Kerja) * 100
                 $row[] = 0; // Placeholder, will be replaced by formula in AfterSheet
                 $row[] = $payroll->nilai_hk ?? 0; // Store as number, not formatted string
@@ -183,7 +188,12 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
 
         foreach ($summaryCols as $index => $colName) {
             $col = $this->getColumnLetter($summaryStartIndex + $index);
-            $widths[$col] = 15;
+            // Jobdesk lebih lebar karena isinya bisa panjang
+            if ($colName === 'Jobdesk') {
+                $widths[$col] = 35;
+            } else {
+                $widths[$col] = 15;
+            }
         }
 
         return $widths;
@@ -423,13 +433,32 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                     
                     // Set formulas for each data row
                     for ($row = 7; $row <= $lastDataRow; $row++) {
-                        // Formula 1: Hadir = SUM of attendance columns (1/0 values)
-                        // Range: from D (index 4) to last date column
+                        // Get user_id from column A (index 0) to check payroll data
+                        $userIdCell = 'A' . $row;
+                        $userId = (int) $sheet->getCell($userIdCell)->getValue();
+                        
+                        // Check if payroll exists and is approved - use present_days directly
+                        $usePresentDays = false;
+                        $presentDaysValue = null;
+                        if (isset($this->payrollData[$userId]) && $this->payrollData[$userId]['status'] === 'approved') {
+                            $usePresentDays = true;
+                            $presentDaysValue = $this->payrollData[$userId]['present_days'];
+                        }
+                        
+                        // Formula 1: Hadir
+                        // Jika payroll sudah approved, gunakan nilai present_days langsung (bukan formula)
+                        // Jika tidak, gunakan formula SUM dari attendance columns
                         $hadirCell = $hadirCol . $row;
-                        $attendanceStartCell = $attendanceStartCol . $row;
-                        $attendanceEndCell = $attendanceEndCol . $row;
-                        $hadirFormula = "=SUM({$attendanceStartCell}:{$attendanceEndCell})";
-                        $sheet->setCellValue($hadirCell, $hadirFormula);
+                        if ($usePresentDays && $presentDaysValue !== null) {
+                            // Gunakan nilai present_days yang sudah dikoreksi
+                            $sheet->setCellValue($hadirCell, $presentDaysValue);
+                        } else {
+                            // Gunakan formula SUM dari attendance columns
+                            $attendanceStartCell = $attendanceStartCol . $row;
+                            $attendanceEndCell = $attendanceEndCol . $row;
+                            $hadirFormula = "=SUM({$attendanceStartCell}:{$attendanceEndCell})";
+                            $sheet->setCellValue($hadirCell, $hadirFormula);
+                        }
                         
                         // Formula 2: Persentase = (Hadir / Hari Kerja) * 100
                         // Handle division by zero: IF(HariKerja=0, 0, (Hadir/HariKerja)*100)

@@ -133,7 +133,7 @@ class ListPayrolls extends ListRecords
 
                     if ($existingPayroll) {
                         // Update existing payroll (especially nilai_hk if it changed)
-                        // Only update if status is 'draft' to avoid overwriting approved/paid payrolls
+                        // Only update if status is 'draft' to avoid overwriting approved payrolls
                         if ($existingPayroll->status === 'draft') {
                             $existingPayroll->update([
                                 'standard_workdays' => $payrollData['standard_workdays'],
@@ -148,7 +148,7 @@ class ListPayrolls extends ListRecords
                                 'hk_review' => $existingPayroll->hk_review ?? $payrollData['hk_review'],
                             ]);
                         }
-                        // Skip if payroll is approved or paid (to preserve manual changes)
+                        // Skip if payroll is approved (to preserve manual changes)
                         continue;
                     }
 
@@ -223,7 +223,7 @@ class ListPayrolls extends ListRecords
                         ->reactive(),
                 ])
                 ->modalHeading('Generate Payroll Otomatis')
-                ->modalDescription('Sistem akan otomatis generate payroll untuk semua karyawan aktif di periode yang dipilih. Hari kerja standar akan dihitung otomatis berdasarkan kalender (weekend + hari libur) jika tidak diisi manual. Payroll yang sudah ada dengan status "Draft" akan di-update, sedangkan yang sudah "Disetujui" atau "Sudah Dibayar" akan dilewati.')
+                ->modalDescription('Sistem akan otomatis generate payroll untuk semua karyawan aktif di periode yang dipilih. Hari kerja standar akan dihitung otomatis berdasarkan kalender (weekend + hari libur) jika tidak diisi manual. Payroll yang sudah ada dengan status "Draft" akan di-update, sedangkan yang sudah "Disetujui" akan dilewati.')
                 ->action(function (array $data) {
                     $period = Carbon::parse($data['period'])->startOfMonth();
                     $locationId = $data['location'] ?? null;
@@ -293,7 +293,7 @@ class ListPayrolls extends ListRecords
                                     ]);
                                     $generated++;
                                 } else {
-                                    // Skip if payroll is approved or paid (to preserve manual changes)
+                                    // Skip if payroll is approved (to preserve manual changes)
                                     $skipped++;
                                 }
                             } else {
@@ -374,7 +374,7 @@ class ListPayrolls extends ListRecords
                         ->helperText('Kosongkan untuk regenerate semua lokasi'),
                 ])
                 ->modalHeading('Regenerate Payroll')
-                ->modalDescription('Sistem akan mengupdate payroll yang statusnya "Draft" dengan nilai HK terbaru dari lokasi. Payroll yang sudah "Disetujui" atau "Sudah Dibayar" tidak akan diubah.')
+                ->modalDescription('Sistem akan mengupdate payroll yang statusnya "Draft" dengan nilai HK terbaru dari lokasi. Payroll yang sudah "Disetujui" tidak akan diubah.')
                 ->action(function (array $data) {
                     $period = Carbon::parse($data['period'])->startOfMonth();
                     $locationId = $data['location'] ?? null;

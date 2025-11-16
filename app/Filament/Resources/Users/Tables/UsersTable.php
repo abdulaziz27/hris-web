@@ -73,6 +73,13 @@ class UsersTable
                     ->sortable()
                     ->placeholder('Belum diset')
                     ->icon('heroicon-o-building-library'),
+                TextColumn::make('position')
+                    ->label('Jobdesk')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Belum diset')
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('shiftKerja.name')
                     ->label('Shift')
                     ->badge()
@@ -90,12 +97,7 @@ class UsersTable
                     ->placeholder('Belum diset')
                     ->icon('heroicon-o-map-pin')
                     ->toggleable(),
-                TextColumn::make('basic_salary')
-                    ->label('Gaji Pokok')
-                    ->money('idr', locale: 'id')
-                    ->sortable()
-                    ->toggleable()
-                    ->placeholder('Belum diset'),
+                // basic_salary dihapus karena sistem masih menggunakan nilai_hk untuk perhitungan gaji
                 TextColumn::make('created_at')
                     ->label('Dibuat Pada')
                     ->dateTime()

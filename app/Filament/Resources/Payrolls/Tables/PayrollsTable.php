@@ -66,11 +66,13 @@ class PayrollsTable
                     ->alignCenter()
                     ->sortable(),
 
+                // hk_review di-hide karena default = present_days, bisa di-edit manual di form jika diperlukan
                 TextColumn::make('hk_review')
                     ->label('HK Review')
                     ->alignCenter()
                     ->sortable()
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('percentage')
                     ->label('Persentase')
@@ -87,20 +89,22 @@ class PayrollsTable
                     ->sortable(),
 
                 TextColumn::make('estimated_salary')
-                    ->label('Estimasi Gaji')
+                    ->label('Gaji')
                     ->formatStateUsing(function ($state) {
                         return 'Rp ' . number_format($state, 0, ',', '.');
                     })
                     ->sortable()
-                    ->toggleable(),
+                    ->weight('bold'),
 
+                // final_salary di-hide karena sama dengan estimated_salary
+                // Tetap ada di database untuk jaga-jaga di masa depan
                 TextColumn::make('final_salary')
                     ->label('Final Gaji')
                     ->formatStateUsing(function ($state) {
                         return 'Rp ' . number_format($state, 0, ',', '.');
                     })
                     ->sortable()
-                    ->weight('bold'),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('selisih_hk')
                     ->label('Selisih HK')
@@ -115,13 +119,11 @@ class PayrollsTable
                     ->color(fn (string $state): string => match ($state) {
                         'draft' => 'gray',
                         'approved' => 'success',
-                        'paid' => 'info',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'draft' => 'Draft',
                         'approved' => 'Disetujui',
-                        'paid' => 'Sudah Dibayar',
                         default => $state,
                     })
                     ->sortable(),
@@ -194,7 +196,6 @@ class PayrollsTable
                     ->options([
                         'draft' => 'Draft',
                         'approved' => 'Disetujui',
-                        'paid' => 'Sudah Dibayar',
                     ]),
 
                 Filter::make('this_month')
@@ -300,29 +301,6 @@ class PayrollsTable
                                 ->title('Payroll Disetujui')
                                 ->success()
                                 ->body("{$count} payroll berhasil disetujui.")
-                                ->send();
-                        }),
-
-                    Action::make('mark_as_paid')
-                        ->label('Tandai Sudah Dibayar')
-                        ->icon('heroicon-o-banknotes')
-                        ->color('info')
-                        ->requiresConfirmation()
-                        ->action(function ($records) {
-                            $count = 0;
-                            $records->each(function ($record) use (&$count) {
-                                if ($record->status === 'approved') {
-                                    $record->update([
-                                        'status' => 'paid',
-                                    ]);
-                                    $count++;
-                                }
-                            });
-                            
-                            \Filament\Notifications\Notification::make()
-                                ->title('Payroll Ditandai Dibayar')
-                                ->success()
-                                ->body("{$count} payroll ditandai sudah dibayar.")
                                 ->send();
                         }),
 
