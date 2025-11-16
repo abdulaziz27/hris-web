@@ -21,8 +21,10 @@ class PayrollsTable
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                return $query->with(['user.location']);
+                // Eager load relationships to prevent N+1 queries
+                return $query->with(['user.location', 'user.jabatan', 'user.departemen']);
             })
+            ->defaultPaginationPageOption(25) // Limit records per page for better performance
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Karyawan')

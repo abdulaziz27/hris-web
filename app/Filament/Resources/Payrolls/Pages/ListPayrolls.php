@@ -23,62 +23,67 @@ class ListPayrolls extends ListRecords
 
     /**
      * Auto-generate payroll when page is mounted
+     * DISABLED: This was causing slow page load. Use manual generate button instead.
      */
     public function mount(): void
     {
         parent::mount();
         
-        // Auto-generate payroll for current month on first load (default filter)
-        // This ensures payroll is generated when page loads with "Bulan Ini" filter active
-        $this->autoGeneratePayrollsForPeriod(now()->startOfMonth(), now()->endOfMonth());
+        // DISABLED: Auto-generate was too slow with 300+ employees
+        // Users should use "Generate Payroll Otomatis" button instead
+        // $this->autoGeneratePayrollsForPeriod(now()->startOfMonth(), now()->endOfMonth());
     }
 
     /**
      * Auto-generate payroll when filters are updated
+     * DISABLED: This was causing slow filter changes. Use manual generate button instead.
      */
     public function updatedTableFilters(): void
     {
         parent::updatedTableFilters();
         
-        // Get period range from filters
-        $periodFrom = null;
-        $periodTo = null;
-        $locationId = null;
+        // DISABLED: Auto-generate on filter change was too slow
+        // Users should use "Generate Payroll Otomatis" button instead
+        
+        // // Get period range from filters
+        // $periodFrom = null;
+        // $periodTo = null;
+        // $locationId = null;
 
-        // Check if period_range filter is active
-        if (isset($this->tableFilters['period_range']['period_from'])) {
-            $periodFrom = Carbon::parse($this->tableFilters['period_range']['period_from'])->startOfMonth();
-        }
-        if (isset($this->tableFilters['period_range']['period_to'])) {
-            $periodTo = Carbon::parse($this->tableFilters['period_range']['period_to'])->endOfMonth();
-        }
+        // // Check if period_range filter is active
+        // if (isset($this->tableFilters['period_range']['period_from'])) {
+        //     $periodFrom = Carbon::parse($this->tableFilters['period_range']['period_from'])->startOfMonth();
+        // }
+        // if (isset($this->tableFilters['period_range']['period_to'])) {
+        //     $periodTo = Carbon::parse($this->tableFilters['period_range']['period_to'])->endOfMonth();
+        // }
 
-        // Check if this_month filter is active
-        if (isset($this->tableFilters['this_month']) && $this->tableFilters['this_month']) {
-            $periodFrom = now()->startOfMonth();
-            $periodTo = now()->endOfMonth();
-        }
+        // // Check if this_month filter is active
+        // if (isset($this->tableFilters['this_month']) && $this->tableFilters['this_month']) {
+        //     $periodFrom = now()->startOfMonth();
+        //     $periodTo = now()->endOfMonth();
+        // }
 
-        // Check if last_month filter is active
-        if (isset($this->tableFilters['last_month']) && $this->tableFilters['last_month']) {
-            $periodFrom = now()->subMonth()->startOfMonth();
-            $periodTo = now()->subMonth()->endOfMonth();
-        }
+        // // Check if last_month filter is active
+        // if (isset($this->tableFilters['last_month']) && $this->tableFilters['last_month']) {
+        //     $periodFrom = now()->subMonth()->startOfMonth();
+        //     $periodTo = now()->subMonth()->endOfMonth();
+        // }
 
-        // Get location filter if active
-        if (isset($this->tableFilters['location']['values']) && is_array($this->tableFilters['location']['values']) && count($this->tableFilters['location']['values']) > 0) {
-            // If multiple locations selected, use first one (or could generate for all)
-            $locationId = (int) $this->tableFilters['location']['values'][0];
-        }
+        // // Get location filter if active
+        // if (isset($this->tableFilters['location']['values']) && is_array($this->tableFilters['location']['values']) && count($this->tableFilters['location']['values']) > 0) {
+        //     // If multiple locations selected, use first one (or could generate for all)
+        //     $locationId = (int) $this->tableFilters['location']['values'][0];
+        // }
 
-        // If period range is determined, auto-generate
-        if ($periodFrom && $periodTo) {
-            $this->autoGeneratePayrollsForPeriod($periodFrom, $periodTo, $locationId);
-        } elseif ($periodFrom) {
-            $this->autoGeneratePayrollsForPeriod($periodFrom, $periodFrom->copy()->endOfMonth(), $locationId);
-        } elseif ($periodTo) {
-            $this->autoGeneratePayrollsForPeriod($periodTo->copy()->startOfMonth(), $periodTo, $locationId);
-        }
+        // // If period range is determined, auto-generate
+        // if ($periodFrom && $periodTo) {
+        //     $this->autoGeneratePayrollsForPeriod($periodFrom, $periodTo, $locationId);
+        // } elseif ($periodFrom) {
+        //     $this->autoGeneratePayrollsForPeriod($periodFrom, $periodFrom->copy()->endOfMonth(), $locationId);
+        // } elseif ($periodTo) {
+        //     $this->autoGeneratePayrollsForPeriod($periodTo->copy()->startOfMonth(), $periodTo, $locationId);
+        // }
     }
 
     /**
