@@ -322,8 +322,14 @@ class UserSeeder extends Seeder
         foreach ($uniqueUsers as $userData) {
             $email = $generateEmail($userData['name']);
             $locationId = $locationIds[$userData['kebun']] ?? null;
-            $departemenId = !empty($userData['bagian']) 
-                ? ($departemenIds[$userData['bagian']] ?? null) 
+            
+            // If bagian is empty, use default "Kantor/Umum" for Unit Usaha Marihat
+            $bagian = !empty($userData['bagian']) 
+                ? $userData['bagian'] 
+                : ($userData['kebun'] === 'Unit Usaha Marihat' ? 'Kantor/Umum' : null);
+            
+            $departemenId = !empty($bagian) 
+                ? ($departemenIds[$bagian] ?? null) 
                 : null;
 
             $users[] = [
@@ -331,7 +337,7 @@ class UserSeeder extends Seeder
                 'email' => $email,
                 'role' => 'employee',
                 'position' => 'Pekerja', // Legacy field
-                'department' => $userData['bagian'] ?: null, // Legacy field
+                'department' => $bagian, // Legacy field
                 'departemen_id' => $departemenId,
                 'jabatan_id' => $jabatanPekerjaId,
                 'location_id' => $locationId,

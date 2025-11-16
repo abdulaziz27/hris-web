@@ -6,6 +6,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use App\Models\Location;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -109,6 +110,18 @@ class UsersTable
                         'manager' => 'Manager',
                         'employee' => 'Karyawan',
                     ]),
+                SelectFilter::make('location_id')
+                    ->label('Lokasi')
+                    ->options(function () {
+                        return Location::where('is_active', true)
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->toArray();
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->multiple()
+                    ->placeholder('Pilih Lokasi'),
                 SelectFilter::make('department')
                     ->label('Departemen')
                     ->options(function () {
