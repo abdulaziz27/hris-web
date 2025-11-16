@@ -506,10 +506,6 @@ class ListPayrolls extends ListRecords
                 ->modalDescription('Export laporan absensi dan payroll dalam format Excel dengan multiple sheets per lokasi.')
                 ->action(function (array $data) {
                     try {
-                        // Increase memory limit and execution time for large exports
-                        ini_set('memory_limit', '512M');
-                        set_time_limit(300); // 5 minutes
-
                         $startDate = Carbon::parse($data['start_date'])->startOfDay();
                         $endDate = Carbon::parse($data['end_date'])->endOfDay();
                         $locationId = $data['location_id'] ?? null;
