@@ -128,21 +128,98 @@ class LeavesTable
                 Filter::make('date_range')
                     ->label('Rentang Tanggal')
                     ->form([
+                        \Filament\Forms\Components\Select::make('preset')
+                            ->label('Preset Periode')
+                            ->options([
+                                'today' => 'Hari Ini',
+                                'this_month' => 'Bulan Ini',
+                                'last_month' => 'Bulan Lalu',
+                                'custom' => 'Custom (Pilih Manual)',
+                            ])
+                            ->default('today')
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $today = now();
+                                [$dateFrom, $dateTo] = match ($state) {
+                                    'today' => [$today->toDateString(), $today->toDateString()],
+                                    'this_month' => [$today->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
+                                    'last_month' => [$today->copy()->subMonth()->startOfMonth()->toDateString(), $today->copy()->subMonth()->endOfMonth()->toDateString()],
+                                    default => [null, null],
+                                };
+                                
+                                if ($dateFrom && $dateTo) {
+                                    $set('start_date', $dateFrom);
+                                    $set('end_date', $dateTo);
+                                }
+                            }),
                         DatePicker::make('start_date')
-                            ->label('Dari'),
+                            ->label('Dari Tanggal')
+                            ->default(fn () => now()->toDateString())
+                            ->visible(fn ($get) => $get('preset') === 'custom' || $get('preset') === null)
+                            ->reactive(),
                         DatePicker::make('end_date')
-                            ->label('Sampai'),
+                            ->label('Sampai Tanggal')
+                            ->default(fn () => now()->toDateString())
+                            ->visible(fn ($get) => $get('preset') === 'custom' || $get('preset') === null)
+                            ->reactive(),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
+                        $preset = $data['preset'] ?? 'today';
+                        $today = now();
+                        $dateFrom = null;
+                        $dateTo = null;
+
+                        // Jika preset dipilih, gunakan preset
+                        if ($preset !== 'custom' && $preset !== null) {
+                            [$dateFrom, $dateTo] = match ($preset) {
+                                'today' => [$today->toDateString(), $today->toDateString()],
+                                'this_month' => [$today->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
+                                'last_month' => [$today->copy()->subMonth()->startOfMonth()->toDateString(), $today->copy()->subMonth()->endOfMonth()->toDateString()],
+                                default => [$data['start_date'] ?? $today->toDateString(), $data['end_date'] ?? $today->toDateString()],
+                            };
+                        } else {
+                            // Jika custom, gunakan start_date dan end_date dari form
+                            $dateFrom = $data['start_date'] ?? $today->toDateString();
+                            $dateTo = $data['end_date'] ?? $today->toDateString();
+                        }
+
                         return $query
                             ->when(
-                                $data['start_date'],
+                                $dateFrom,
                                 fn (Builder $query, $date): Builder => $query->where('start_date', '>=', $date),
                             )
                             ->when(
-                                $data['end_date'],
+                                $dateTo,
                                 fn (Builder $query, $date): Builder => $query->where('end_date', '<=', $date),
                             );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        $preset = $data['preset'] ?? 'today';
+                        $today = now();
+
+                        // Tentukan label berdasarkan preset
+                        if ($preset !== 'custom' && $preset !== null) {
+                            $label = match ($preset) {
+                                'today' => 'Hari Ini',
+                                'this_month' => 'Bulan Ini',
+                                'last_month' => 'Bulan Lalu',
+                                default => null,
+                            };
+
+                            if ($label) {
+                                $indicators[] = $label;
+                            }
+                        } else {
+                            if ($data['start_date'] ?? null) {
+                                $indicators[] = 'Dari: '.\Carbon\Carbon::parse($data['start_date'])->format('d M Y');
+                            }
+                            if ($data['end_date'] ?? null) {
+                                $indicators[] = 'Sampai: '.\Carbon\Carbon::parse($data['end_date'])->format('d M Y');
+                            }
+                        }
+
+                        return $indicators;
                     }),
             ])
             ->recordActions([

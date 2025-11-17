@@ -21,13 +21,13 @@ class LeaveResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Manajemen Cuti';
+    protected static UnitEnum|string|null $navigationGroup = 'Absensi & Pengajuan Cuti';
 
     protected static ?string $navigationLabel = 'Pengajuan Cuti';
 
     protected static ?string $pluralLabel = 'Pengajuan Cuti';
 
-    protected static ?int $navigationSort = 40;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {

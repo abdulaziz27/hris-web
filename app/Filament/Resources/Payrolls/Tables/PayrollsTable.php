@@ -204,14 +204,32 @@ class PayrollsTable
                         ->whereYear('period', now()->year)
                         ->whereMonth('period', now()->month))
                     ->toggle()
-                    ->default(),
+                    ->default()
+                    ->indicateUsing(function () {
+                        $currentMonth = now();
+                        $months = [
+                            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                        ];
+                        return 'Bulan Ini: ' . $months[$currentMonth->month] . ' ' . $currentMonth->year;
+                    }),
 
                 Filter::make('last_month')
                     ->label('Bulan Lalu')
                     ->query(fn (Builder $query): Builder => $query
                         ->whereYear('period', now()->subMonth()->year)
                         ->whereMonth('period', now()->subMonth()->month))
-                    ->toggle(),
+                    ->toggle()
+                    ->indicateUsing(function () {
+                        $lastMonth = now()->subMonth();
+                        $months = [
+                            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                        ];
+                        return 'Bulan Lalu: ' . $months[$lastMonth->month] . ' ' . $lastMonth->year;
+                    }),
 
                 SelectFilter::make('location')
                     ->label('Lokasi')

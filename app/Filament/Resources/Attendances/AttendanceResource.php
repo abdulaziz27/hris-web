@@ -17,7 +17,7 @@ class AttendanceResource extends Resource
 {
     protected static ?string $model = Attendance::class;
 
-    protected static ?string $navigationLabel = 'Detail Kehadiran';
+    protected static ?string $navigationLabel = 'Detail Absensi';
 
     protected static ?string $modelLabel = 'Kehadiran';
 
@@ -25,9 +25,9 @@ class AttendanceResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Laporan Absensi'; // Diubah dari 'Dashboard Absensi' agar muncul setelah 'Laporan'
+    protected static UnitEnum|string|null $navigationGroup = 'Absensi & Pengajuan Cuti'; // Diubah dari 'Dashboard Absensi' agar muncul setelah 'Laporan'
 
-    protected static ?int $navigationSort = 5; // Setelah Laporan (4)
+    protected static ?int $navigationSort = 3; // Setelah Laporan (4)
 
     public static function form(Schema $schema): Schema
     {
