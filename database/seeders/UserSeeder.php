@@ -352,24 +352,33 @@ class UserSeeder extends Seeder
         foreach ($users as $userData) {
             $shiftId = $shiftIds->get($userData['shift_name']) ?? $shiftPagiId;
 
+            // Check if user already exists
+            $existingUser = User::where('email', $userData['email'])->first();
+
+            $userDataToUpdate = [
+                'name' => $userData['name'],
+                'phone' => $userData['phone'],
+                'role' => $userData['role'],
+                'position' => $userData['position'],
+                'department' => $userData['department'],
+                'departemen_id' => $userData['departemen_id'],
+                'jabatan_id' => $userData['jabatan_id'],
+                'shift_kerja_id' => $shiftId,
+                'location_id' => $userData['location_id'],
+                // Default workdays: 5 hari kerja per minggu (Senin-Jumat)
+                // standard_workdays_per_month akan dihitung otomatis saat generate payroll
+                'workdays_per_week' => 5,
+                'standard_workdays_per_month' => null, // Null = auto-calculate dari workdays_per_week
+            ];
+
+            // Only set password if user is new (doesn't exist yet)
+            if (!$existingUser) {
+                $userDataToUpdate['password'] = Hash::make('password');
+            }
+
             User::updateOrCreate(
                 ['email' => $userData['email']],
-                [
-                    'name' => $userData['name'],
-                    'password' => Hash::make('password'),
-                    'phone' => $userData['phone'],
-                    'role' => $userData['role'],
-                    'position' => $userData['position'],
-                    'department' => $userData['department'],
-                    'departemen_id' => $userData['departemen_id'],
-                    'jabatan_id' => $userData['jabatan_id'],
-                    'shift_kerja_id' => $shiftId,
-                    'location_id' => $userData['location_id'],
-                    // Default workdays: 5 hari kerja per minggu (Senin-Jumat)
-                    // standard_workdays_per_month akan dihitung otomatis saat generate payroll
-                    'workdays_per_week' => 5,
-                    'standard_workdays_per_month' => null, // Null = auto-calculate dari workdays_per_week
-                ]
+                $userDataToUpdate
             );
         }
 

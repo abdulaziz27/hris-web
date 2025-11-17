@@ -122,6 +122,18 @@ class OvertimeSeeder extends Seeder
 
             $status = $statuses[$index % count($statuses)];
 
+            // Check for duplicate overtime request (same user, same date, same start_time)
+            $existingOvertime = Overtime::where('user_id', $employee->id)
+                ->where('date', $date->toDateString())
+                ->where('start_time', $startTime->format('H:i'))
+                ->first();
+
+            if ($existingOvertime) {
+                $this->command->info("Skipping duplicate overtime for user {$employee->name} on {$date->toDateString()} at {$startTime->format('H:i')}");
+                $attempt++;
+                continue;
+            }
+
             $overtimeData = [
                 'user_id' => $employee->id,
                 'date' => $date->toDateString(),
@@ -136,14 +148,22 @@ class OvertimeSeeder extends Seeder
                 $approvedAt = $date->copy()->subDays(rand(1, 3));
                 $overtimeData['approved_by'] = $manager->id;
                 $overtimeData['approved_at'] = $approvedAt;
-                $overtimeData['created_at'] = $approvedAt->subDays(rand(1, 2));
+                $overtimeData['created_at'] = $approvedAt->copy()->subDays(rand(1, 2));
                 $overtimeData['updated_at'] = $approvedAt;
             } else {
                 $overtimeData['created_at'] = $date->copy()->subDays(rand(1, 3));
                 $overtimeData['updated_at'] = $date->copy()->subDays(rand(1, 3));
             }
 
-            Overtime::create($overtimeData);
+            // Use updateOrCreate to prevent duplicates
+            Overtime::updateOrCreate(
+                [
+                    'user_id' => $employee->id,
+                    'date' => $date->toDateString(),
+                    'start_time' => $startTime->format('H:i'),
+                ],
+                $overtimeData
+            );
             $createdCount++;
             $attempt++;
         }

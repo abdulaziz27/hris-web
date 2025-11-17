@@ -86,38 +86,51 @@ class LeaveTestingSeeder extends Seeder
             $totalDays = rand(1, 5);
             $endDate = (clone $startDate)->addDays($totalDays - 1);
 
+            // Check for duplicate leave request (same employee, same start_date, same end_date)
+            $existingLeave = Leave::where('employee_id', $user->id)
+                ->where('start_date', $startDate->toDateString())
+                ->where('end_date', $endDate->toDateString())
+                ->first();
+
+            if ($existingLeave) {
+                $this->command->info("Skipping duplicate leave for user {$user->name} on {$startDate->toDateString()}");
+                continue;
+            }
+
+            $leaveData = [
+                'employee_id' => $user->id,
+                'leave_type_id' => $leaveType->id,
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+                'total_days' => $totalDays,
+                'reason' => $realLeaveReasons[$index % count($realLeaveReasons)],
+                'status' => $status,
+            ];
+
             if ($status === 'approved') {
                 $approvedAt = (clone $startDate)->subDays(rand(2, 5));
                 if ($approvedAt->year < 2025) {
                     $approvedAt = \Carbon\Carbon::create(2025, 1, rand(1, 10));
                 }
                 
-                Leave::create([
-                    'employee_id' => $user->id,
-                    'leave_type_id' => $leaveType->id,
-                    'start_date' => $startDate->toDateString(),
-                    'end_date' => $endDate->toDateString(),
-                    'total_days' => $totalDays,
-                    'reason' => $realLeaveReasons[$index % count($realLeaveReasons)],
-                    'status' => 'approved',
-                    'approved_by' => $manager->id,
-                    'approved_at' => $approvedAt,
-                    'created_at' => $approvedAt->subDays(rand(1, 3)),
-                    'updated_at' => $approvedAt,
-                ]);
+                $leaveData['approved_by'] = $manager->id;
+                $leaveData['approved_at'] = $approvedAt;
+                $leaveData['created_at'] = $approvedAt->copy()->subDays(rand(1, 3));
+                $leaveData['updated_at'] = $approvedAt;
             } else {
-                Leave::create([
+                $leaveData['created_at'] = \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28));
+                $leaveData['updated_at'] = \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28));
+            }
+
+            // Use updateOrCreate to prevent duplicates
+            Leave::updateOrCreate(
+                [
                     'employee_id' => $user->id,
-                    'leave_type_id' => $leaveType->id,
                     'start_date' => $startDate->toDateString(),
                     'end_date' => $endDate->toDateString(),
-                    'total_days' => $totalDays,
-                    'reason' => $realLeaveReasons[$index % count($realLeaveReasons)],
-                    'status' => 'pending',
-                    'created_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
-                    'updated_at' => \Carbon\Carbon::create(2025, rand(1, 12), rand(1, 28)),
-                ]);
-            }
+                ],
+                $leaveData
+            );
         }
 
         $this->command->info('✅ Created ' . $selectedEmployees->count() . ' leave requests from ' . $selectedEmployees->count() . ' different locations successfully.');

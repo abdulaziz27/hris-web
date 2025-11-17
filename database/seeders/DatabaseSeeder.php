@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
+        $seeders = [
             // ============================================
             // CORE DATA SEEDERS (Updated with client data)
             // ============================================
@@ -36,28 +36,34 @@ class DatabaseSeeder extends Seeder
             // LEAVE MANAGEMENT SEEDERS
             // ============================================
             LeaveTypeSeeder::class,         // ✅ Already matches company policy
-            LeaveTestingSeeder::class,       // ✅ Updated: 8 employees from 8 different locations
-
+            
             // ============================================
-            // HOLIDAY & ATTENDANCE SEEDERS
+            // HOLIDAY SEEDERS
             // ============================================
             IndonesiaPublicHoliday2025Seeder::class, // ✅ Updated: Official 2025 holidays + cuti bersama
-            AttendanceSeeder::class,        // ✅ Updated: Last 2 months, workdays only, 5-8 sample employees
+        ];
 
-            // ============================================
-            // OVERTIME & OTHER DATA SEEDERS
-            // ============================================
-            OvertimeSeeder::class,          // ✅ Updated: 10-15 sample requests from seeded employees
-            NoteSeeder::class,              // ⚠️ Optional: Dummy notes for testing (can be disabled if not needed)
+        // ============================================
+        // TESTING SEEDERS - DISABLED di production
+        // ============================================
+        // Note: Seeder testing hanya dijalankan di development/staging
+        // Jangan dijalankan di production karena akan membuat data dummy/testing
+        if (!app()->environment('production')) {
+            $seeders[] = LeaveTestingSeeder::class;       // ❌ DISABLED di production - Data testing
+            $seeders[] = AttendanceSeeder::class;         // ❌ DISABLED di production - Berbahaya! Menghapus semua attendance
+            $seeders[] = OvertimeSeeder::class;           // ❌ DISABLED di production - Data testing
+            $seeders[] = NoteSeeder::class;               // ❌ DISABLED di production - Data testing
+        }
 
-            // ============================================
-            // DISABLED SEEDERS (Not needed)
-            // ============================================
-            // QrAbsenSeeder::class,
-            // PermissionSeeder::class,
-            // EmployeeBulkSeeder::class,     // DISABLED - Using client data from UserSeeder
-            // DashboardAttendanceSeeder::class, // DISABLED - Using AttendanceSeeder
-            // DashboardStatsSeeder::class,   // DISABLED - Using LeaveTestingSeeder & OvertimeSeeder
-        ]);
+        $this->call($seeders);
+
+        // ============================================
+        // DISABLED SEEDERS (Not needed)
+        // ============================================
+        // QrAbsenSeeder::class,
+        // PermissionSeeder::class,
+        // EmployeeBulkSeeder::class,     // DISABLED - Using client data from UserSeeder
+        // DashboardAttendanceSeeder::class, // DISABLED - Using AttendanceSeeder
+        // DashboardStatsSeeder::class,   // DISABLED - Using LeaveTestingSeeder & OvertimeSeeder
     }
 }
