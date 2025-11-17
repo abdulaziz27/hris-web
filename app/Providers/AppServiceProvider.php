@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Attendance;
+use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Observers\AttendanceObserver;
+use App\Observers\LeaveObserver;
 use App\Observers\LeaveTypeObserver;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
@@ -30,5 +32,6 @@ class AppServiceProvider extends ServiceProvider
         // Register model observers
         LeaveType::observe(LeaveTypeObserver::class);
         Attendance::observe(AttendanceObserver::class);
+        Leave::observe(LeaveObserver::class);
     }
 }

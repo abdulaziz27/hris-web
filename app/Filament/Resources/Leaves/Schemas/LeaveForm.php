@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Leaves\Schemas;
 
+use App\Models\User;
 use App\Support\WorkdayCalculator;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -55,11 +58,113 @@ class LeaveForm
                             }),
 
                         \Filament\Forms\Components\TextInput::make('total_days')
-                            ->label('Total Hari')
-                            ->disabled()
-                            ->dehydrated()
+                            ->label('Total Hari Cuti')
+                            ->helperText(function ($get) {
+                                $startDate = $get('start_date');
+                                $endDate = $get('end_date');
+                                
+                                if (!$startDate || !$endDate) {
+                                    return 'Range: - hari. Ini adalah semua hari dalam range. Anda yang paling tahu berapa hari kerja dalam range ini. Edit manual jika perlu.';
+                                }
+                                
+                                try {
+                                    $startDateStr = $startDate instanceof \Carbon\Carbon 
+                                        ? $startDate->format('Y-m-d') 
+                                        : $startDate;
+                                    $endDateStr = $endDate instanceof \Carbon\Carbon 
+                                        ? $endDate->format('Y-m-d') 
+                                        : $endDate;
+                                    
+                                    $start = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'));
+                                    $end = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'));
+                                    
+                                    $totalDays = WorkdayCalculator::countTotalDays($start, $end);
+                                    $manualDays = $get('total_days');
+                                    
+                                    if ($manualDays && $manualDays != $totalDays) {
+                                        return "Range: {$totalDays} hari. Anda mengubah menjadi {$manualDays} hari. Pastikan sesuai dengan hari kerja Anda.";
+                                    }
+                                    
+                                    return "Range: {$totalDays} hari. Ini adalah semua hari dalam range. Anda yang paling tahu berapa hari kerja dalam range ini. Edit manual jika perlu.";
+                                } catch (\Exception $e) {
+                                    return 'Range: - hari. Ini adalah semua hari dalam range. Anda yang paling tahu berapa hari kerja dalam range ini. Edit manual jika perlu.';
+                                }
+                            })
+                            ->required()
+                            ->numeric()
                             ->default(1)
-                            ->numeric(),
+                            ->minValue(1)
+                            ->maxValue(function ($get) {
+                                $startDate = $get('start_date');
+                                $endDate = $get('end_date');
+                                
+                                if (!$startDate || !$endDate) {
+                                    return 365; // fallback
+                                }
+                                
+                                try {
+                                    $startDateStr = $startDate instanceof \Carbon\Carbon 
+                                        ? $startDate->format('Y-m-d') 
+                                        : $startDate;
+                                    $endDateStr = $endDate instanceof \Carbon\Carbon 
+                                        ? $endDate->format('Y-m-d') 
+                                        : $endDate;
+                                    
+                                    $start = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'));
+                                    $end = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'));
+                                    
+                                    return WorkdayCalculator::countTotalDays($start, $end);
+                                } catch (\Exception $e) {
+                                    return 365; // fallback
+                                }
+                            })
+                            ->helperText(function ($get) {
+                                $startDate = $get('start_date');
+                                $endDate = $get('end_date');
+                                $employeeId = $get('employee_id');
+                                $totalDays = $get('total_days') ?? 0;
+                                
+                                if (!$startDate || !$endDate) {
+                                    return "Total hari cuti akan dihitung otomatis setelah memilih tanggal. Anda bisa koreksi manual jika perlu.";
+                                }
+                                
+                                try {
+                                    $startDateStr = $startDate instanceof \Carbon\Carbon 
+                                        ? $startDate->format('Y-m-d') 
+                                        : $startDate;
+                                    $endDateStr = $endDate instanceof \Carbon\Carbon 
+                                        ? $endDate->format('Y-m-d') 
+                                        : $endDate;
+                                    
+                                    $start = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'));
+                                    $end = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'));
+                                    
+                                    // Get location from employee
+                                    $locationId = null;
+                                    if ($employeeId) {
+                                        $employee = User::find($employeeId);
+                                        if ($employee && $employee->location_id) {
+                                            $locationId = $employee->location_id;
+                                        }
+                                    }
+                                    
+                                    $rangeDays = WorkdayCalculator::countTotalDays($start, $end);
+                                    $weekendDays = WorkdayCalculator::countWeekendDays($start, $end, $locationId);
+                                    $autoWorkdays = WorkdayCalculator::countWorkdaysExcludingHolidays($start, $end, $locationId);
+                                    
+                                    $info = "Range: {$rangeDays} hari | Weekend: {$weekendDays} hari | Auto-calculate: {$autoWorkdays} hari";
+                                    
+                                    if ($totalDays != $autoWorkdays && $totalDays > 0) {
+                                        $info .= " | ⚠️ Anda mengubah dari {$autoWorkdays} hari menjadi {$totalDays} hari";
+                                    }
+                                    
+                                    $info .= ". Anda bisa koreksi manual jika perlu. Admin akan melakukan approval nanti.";
+                                    
+                                    return $info;
+                                } catch (\Exception $e) {
+                                    return "Total hari cuti. Anda bisa koreksi manual jika perlu.";
+                                }
+                            }),
 
                         Textarea::make('reason')
                             ->label('Alasan')
@@ -122,7 +227,9 @@ class LeaveForm
             $start = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'))->startOfDay();
             $end = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'))->startOfDay();
             
-            $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays($start, $end);
+            // ✅ SIMPLE: Hitung semua hari dalam range (termasuk weekend)
+            // User yang tahu berapa hari kerja mereka, bisa edit manual
+            $totalDays = WorkdayCalculator::countTotalDays($start, $end);
             $set('total_days', $totalDays);
         }
     }

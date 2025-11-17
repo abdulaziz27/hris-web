@@ -63,7 +63,8 @@ class AttendanceSeeder extends Seeder
 
             while ($currentDate <= $endDate) {
                 // Skip weekends and holidays
-                $isWeekend = WorkdayCalculator::isWeekend($currentDate, $locationId);
+                // ✅ Updated: Use userId instead of locationId for user-specific weekend calculation
+                $isWeekend = WorkdayCalculator::isWeekend($currentDate, $user->id, $locationId);
                 $isHoliday = in_array($currentDate->toDateString(), $holidays);
             
                 if (!$isWeekend && !$isHoliday) {
@@ -80,9 +81,9 @@ class AttendanceSeeder extends Seeder
                         'latlon_in' => $this->getLocationLatLon($locationId),
                         'latlon_out' => $flowData['time_out'] ? $this->getLocationLatLon($locationId) : null,
                 'status' => $flowData['status'],
-                        'is_weekend' => false,
-                'is_holiday' => false,
-                'holiday_work' => false,
+                        'is_weekend' => false, // Always false karena kita skip weekend (hanya generate untuk workdays)
+                'is_holiday' => false, // Always false karena kita skip holiday (hanya generate untuk workdays)
+                'holiday_work' => false, // Always false karena kita tidak generate attendance untuk holiday
                 'late_minutes' => $flowData['late_minutes'],
                 'early_leave_minutes' => $flowData['early_leave_minutes'],
             ]);

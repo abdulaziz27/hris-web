@@ -365,6 +365,10 @@ class UserSeeder extends Seeder
                     'jabatan_id' => $userData['jabatan_id'],
                     'shift_kerja_id' => $shiftId,
                     'location_id' => $userData['location_id'],
+                    // Default workdays: 5 hari kerja per minggu (Senin-Jumat)
+                    // standard_workdays_per_month akan dihitung otomatis saat generate payroll
+                    'workdays_per_week' => 5,
+                    'standard_workdays_per_month' => null, // Null = auto-calculate dari workdays_per_week
                 ]
             );
         }

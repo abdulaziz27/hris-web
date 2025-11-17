@@ -27,9 +27,11 @@ class OvertimeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Dashboard Absensi';
+    protected static UnitEnum|string|null $navigationGroup = 'Laporan Absensi'; // Diubah dari 'Dashboard Absensi' agar muncul setelah 'Laporan'
 
-    protected static ?int $navigationSort = 33;
+    protected static ?int $navigationSort = 6; // Setelah Laporan (4) dan Attendance (5)
+
+    protected static bool $shouldRegisterNavigation = false; // Hidden karena tidak menggunakan fitur overtime
 
     public static function form(Schema $schema): Schema
     {

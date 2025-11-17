@@ -19,9 +19,12 @@ class CreatePayroll extends CreateRecord
         // Auto-calculate if not set
         if (isset($data['user_id']) && isset($data['period'])) {
             $period = Carbon::parse($data['period'])->startOfMonth();
-            $standardWorkdays = $data['standard_workdays'] ?? 21;
+            // Pass null jika standard_workdays tidak diisi, agar dihitung per-user
+            $standardWorkdays = isset($data['standard_workdays']) && $data['standard_workdays'] !== null 
+                ? (int) $data['standard_workdays'] 
+                : null;
 
-            // Generate payroll data
+            // Generate payroll data (akan dihitung per-user jika standardWorkdays null)
             $payrollData = PayrollCalculator::generateMonthlyPayroll(
                 $data['user_id'],
                 $period,

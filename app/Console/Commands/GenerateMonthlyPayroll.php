@@ -58,23 +58,24 @@ class GenerateMonthlyPayroll extends Command
         }
         $this->newLine();
 
-        // Get users
-        $query = User::where('role', 'employee');
+        // Get users (employee, manager, admin)
+        $query = User::whereIn('role', ['employee', 'manager', 'admin']);
         if ($locationId) {
             $query->where('location_id', $locationId);
         }
         $users = $query->get();
 
         if ($users->isEmpty()) {
-            $this->warn('Tidak ada karyawan yang ditemukan.');
+            $this->warn('Tidak ada user yang ditemukan.');
             return self::SUCCESS;
         }
 
-        $this->info("Found {$users->count()} employee(s)");
+        $this->info("Found {$users->count()} user(s)");
         $this->newLine();
 
-        // Calculate standard workdays
-        $standardWorkdays = PayrollCalculator::calculateStandardWorkdays(
+        // Note: standard workdays will be calculated per user in generateMonthlyPayroll()
+        // This is a fallback value, but each user will have their own standard workdays
+        $defaultStandardWorkdays = PayrollCalculator::calculateStandardWorkdays(
             $period->copy()->startOfMonth(),
             $period->copy()->endOfMonth()
         );
@@ -99,11 +100,11 @@ class GenerateMonthlyPayroll extends Command
                     continue;
                 }
 
-                // Generate payroll data
+                // Generate payroll data (pass null untuk standardWorkdays agar dihitung per user dengan userId)
                 $payrollData = PayrollCalculator::generateMonthlyPayroll(
                     $user->id,
                     $period,
-                    $standardWorkdays
+                    null // Will be calculated per user with userId (supports standard_workdays_per_month)
                 );
 
                 // Create payroll record

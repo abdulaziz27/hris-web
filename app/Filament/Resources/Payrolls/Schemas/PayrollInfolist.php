@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Payrolls\Schemas;
 
+use App\Services\PayrollCalculator;
+use Carbon\Carbon;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -36,7 +38,82 @@ class PayrollInfolist
                             ->label('Hari Kerja Standar'),
 
                         TextEntry::make('present_days')
-                            ->label('Hari Hadir'),
+                            ->label('Hari Hadir')
+                            ->helperText('Total = Hadir + Cuti + Sakit'),
+
+                        TextEntry::make('attendance_days_breakdown')
+                            ->label('Hadir')
+                            ->state(function ($record) {
+                                if (!$record || !$record->user_id || !$record->period) {
+                                    return '-';
+                                }
+                                
+                                try {
+                                    $period = Carbon::parse($record->period);
+                                    $start = $period->copy()->startOfMonth();
+                                    $end = $period->copy()->endOfMonth();
+                                    
+                                    $user = $record->user;
+                                    $attendanceDays = PayrollCalculator::calculatePresentDays(
+                                        $record->user_id,
+                                        $start,
+                                        $end,
+                                        $user->location_id ?? null
+                                    );
+                                    
+                                    return $attendanceDays . ' hari';
+                                } catch (\Exception $e) {
+                                    return '-';
+                                }
+                            }),
+
+                        TextEntry::make('cuti_days_breakdown')
+                            ->label('Cuti')
+                            ->state(function ($record) {
+                                if (!$record || !$record->user_id || !$record->period) {
+                                    return '-';
+                                }
+                                
+                                try {
+                                    $period = Carbon::parse($record->period);
+                                    $start = $period->copy()->startOfMonth();
+                                    $end = $period->copy()->endOfMonth();
+                                    
+                                    $cutiDays = PayrollCalculator::calculateCutiDays(
+                                        $record->user_id,
+                                        $start,
+                                        $end
+                                    );
+                                    
+                                    return $cutiDays . ' hari';
+                                } catch (\Exception $e) {
+                                    return '-';
+                                }
+                            }),
+
+                        TextEntry::make('sakit_days_breakdown')
+                            ->label('Sakit')
+                            ->state(function ($record) {
+                                if (!$record || !$record->user_id || !$record->period) {
+                                    return '-';
+                                }
+                                
+                                try {
+                                    $period = Carbon::parse($record->period);
+                                    $start = $period->copy()->startOfMonth();
+                                    $end = $period->copy()->endOfMonth();
+                                    
+                                    $sakitDays = PayrollCalculator::calculateSakitDays(
+                                        $record->user_id,
+                                        $start,
+                                        $end
+                                    );
+                                    
+                                    return $sakitDays . ' hari';
+                                } catch (\Exception $e) {
+                                    return '-';
+                                }
+                            }),
 
                         // hk_review di-hide karena default = present_days
                         TextEntry::make('hk_review')

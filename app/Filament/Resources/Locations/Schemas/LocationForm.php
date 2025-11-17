@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Locations\Schemas;
 
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -53,6 +54,23 @@ class LocationForm
                             ])
                             ->native(false)
                             ->helperText('Pilih timezone sesuai lokasi geografis kebun/kantor. Penting untuk perhitungan waktu absensi yang akurat.'),
+                        
+                        // Hidden: weekend_pattern tidak lagi digunakan karena weekend sekarang dihitung per-user (workdays_per_week)
+                        // Field tetap ada di database untuk backward compatibility sebagai fallback
+                        CheckboxList::make('weekend_pattern')
+                            ->label('Hari Weekend')
+                            ->hidden() // Hidden karena weekend sekarang dihitung per-user, bukan per-location
+                            ->options([
+                                'monday' => 'Senin',
+                                'tuesday' => 'Selasa',
+                                'wednesday' => 'Rabu',
+                                'thursday' => 'Kamis',
+                                'friday' => 'Jumat',
+                                'saturday' => 'Sabtu',
+                                'sunday' => 'Minggu',
+                            ])
+                            ->default(['saturday', 'sunday'])
+                            ->dehydrated(), // Tetap simpan ke database untuk backward compatibility
                     ])
                     ->columns(1),
 

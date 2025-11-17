@@ -21,6 +21,7 @@ class Location extends Model
         'default_salary',
         'nilai_hk',
         'timezone',
+        'weekend_pattern',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class Location extends Model
             'is_active' => 'boolean',
             'default_salary' => 'decimal:2',
             'nilai_hk' => 'decimal:2',
+            'weekend_pattern' => 'array',
         ];
     }
 

@@ -73,10 +73,11 @@ class AttendanceObserver
 
             // If payroll doesn't exist yet, create it with initial data
             if (!$payroll->exists) {
-                // Calculate standard workdays for this month
+                // Calculate standard workdays for this month (with userId for user-specific weekend)
                 $standardWorkdays = PayrollCalculator::calculateStandardWorkdays(
                     $period->copy()->startOfMonth(),
-                    $period->copy()->endOfMonth()
+                    $period->copy()->endOfMonth(),
+                    $attendance->user_id
                 );
 
                 // Get nilai_hk (bisa 0 jika belum diisi, tidak masalah)
@@ -91,11 +92,12 @@ class AttendanceObserver
                 $payroll->created_by = 1; // System user
             }
 
-            // Recalculate present_days based on actual attendances (with location timezone awareness)
+            // Recalculate effective present_days (attendance + paid leave) with location timezone awareness
             $startDate = $period->copy()->startOfMonth();
             $endDate = $period->copy()->endOfMonth();
             $user = \App\Models\User::find($attendance->user_id);
-            $presentDays = PayrollCalculator::calculatePresentDays($attendance->user_id, $startDate, $endDate, $user->location_id ?? null);
+            // Use calculateEffectivePresentDays to include paid leave
+            $presentDays = PayrollCalculator::calculateEffectivePresentDays($attendance->user_id, $startDate, $endDate, $user->location_id ?? null);
 
             // Update present_days (selalu update, tidak peduli nilai_hk)
             $payroll->present_days = $presentDays;

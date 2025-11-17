@@ -91,8 +91,8 @@ class ListPayrolls extends ListRecords
      */
     protected function autoGeneratePayrollsForPeriod(Carbon $periodFrom, Carbon $periodTo, ?int $locationId = null): void
     {
-        // Get active employees (filter by location if provided)
-        $query = User::where('role', 'employee');
+        // Get active users (employee, manager, admin) - filter by location if provided
+        $query = User::whereIn('role', ['employee', 'manager', 'admin']);
         
         if ($locationId) {
             $query->where('location_id', $locationId);
@@ -113,10 +113,11 @@ class ListPayrolls extends ListRecords
             
             foreach ($users as $user) {
                 try {
-                    // Calculate standard workdays for this month
+                    // Calculate standard workdays for this month (with userId for user-specific weekend)
                     $standardWorkdays = PayrollCalculator::calculateStandardWorkdays(
                         $period->copy()->startOfMonth(),
-                        $period->copy()->endOfMonth()
+                        $period->copy()->endOfMonth(),
+                        $user->id
                     );
 
                     // Generate payroll data
@@ -209,38 +210,18 @@ class ListPayrolls extends ListRecords
                         ->searchable()
                         ->preload()
                         ->helperText('Kosongkan untuk generate semua lokasi'),
-
-                    Select::make('standard_workdays')
-                        ->label('Hari Kerja Standar')
-                        ->options([
-                            20 => '20 hari',
-                            21 => '21 hari',
-                            22 => '22 hari',
-                            23 => '23 hari',
-                        ])
-                        ->placeholder('Otomatis (dihitung dari kalender)')
-                        ->helperText('Kosongkan untuk menghitung otomatis berdasarkan kalender (weekend + hari libur). Atau pilih manual jika ingin override.')
-                        ->reactive(),
                 ])
                 ->modalHeading('Generate Payroll Otomatis')
-                ->modalDescription('Sistem akan otomatis generate payroll untuk semua karyawan aktif di periode yang dipilih. Hari kerja standar akan dihitung otomatis berdasarkan kalender (weekend + hari libur) jika tidak diisi manual. Payroll yang sudah ada dengan status "Draft" akan di-update, sedangkan yang sudah "Disetujui" akan dilewati.')
+                ->modalDescription('Sistem akan otomatis generate payroll untuk semua user aktif (karyawan, manager, admin) di periode yang dipilih. Hari kerja standar akan dihitung otomatis per-user berdasarkan setting mereka (standard_workdays_per_month atau workdays_per_week). Payroll yang sudah ada dengan status "Draft" akan di-update, sedangkan yang sudah "Disetujui" akan dilewati.')
                 ->action(function (array $data) {
                     $period = Carbon::parse($data['period'])->startOfMonth();
                     $locationId = $data['location'] ?? null;
                     
-                    // Jika standard_workdays tidak diisi, hitung otomatis
-                    $standardWorkdays = null;
-                    if (isset($data['standard_workdays']) && $data['standard_workdays'] !== null) {
-                        $standardWorkdays = (int) $data['standard_workdays'];
-                    } else {
-                        // Hitung otomatis berdasarkan periode
-                        $start = $period->copy()->startOfMonth();
-                        $end = $period->copy()->endOfMonth();
-                        $standardWorkdays = PayrollCalculator::calculateStandardWorkdays($start, $end);
-                    }
+                    // SELALU hitung per-user (tidak ada override global)
+                    // Setiap user akan menggunakan standard_workdays_per_month atau workdays_per_week mereka
 
-                    // Get users to generate payroll for
-                    $query = User::where('role', 'employee');
+                    // Get users to generate payroll for (employee, manager, admin)
+                    $query = User::whereIn('role', ['employee', 'manager', 'admin']);
                     
                     if ($locationId) {
                         $query->where('location_id', $locationId);
@@ -251,9 +232,9 @@ class ListPayrolls extends ListRecords
 
                     if ($totalUsers === 0) {
                         Notification::make()
-                            ->title('Tidak ada karyawan')
+                            ->title('Tidak ada user')
                             ->warning()
-                            ->body('Tidak ada karyawan yang ditemukan untuk generate payroll.')
+                            ->body('Tidak ada user yang ditemukan untuk generate payroll.')
                             ->send();
                         return;
                     }
@@ -269,11 +250,11 @@ class ListPayrolls extends ListRecords
                                 ->where('period', $period->toDateString())
                                 ->first();
 
-                            // Generate payroll data
+                            // Generate payroll data (selalu pass null agar dihitung per-user)
                             $payrollData = PayrollCalculator::generateMonthlyPayroll(
                                 $user->id,
                                 $period,
-                                $standardWorkdays
+                                null // Always calculate per user based on their settings
                             );
 
                             if ($existingPayroll) {
@@ -333,7 +314,7 @@ class ListPayrolls extends ListRecords
                             return str_contains($error, 'Nilai HK');
                         });
                         if (count($nilaiHKErrors) > 0) {
-                            $message .= "\n\nCatatan: Beberapa karyawan belum memiliki Nilai HK. Payroll tetap dibuat dengan nilai_hk = 0. Isi Nilai HK di lokasi atau user untuk menghitung gaji.";
+                            $message .= "\n\nCatatan: Beberapa user belum memiliki Nilai HK. Payroll tetap dibuat dengan nilai_hk = 0. Isi Nilai HK di lokasi atau user untuk menghitung gaji.";
                         }
                     }
 
@@ -379,8 +360,8 @@ class ListPayrolls extends ListRecords
                     $period = Carbon::parse($data['period'])->startOfMonth();
                     $locationId = $data['location'] ?? null;
 
-                    // Get users to regenerate payroll for
-                    $query = User::where('role', 'employee');
+                    // Get users to regenerate payroll for (employee, manager, admin)
+                    $query = User::whereIn('role', ['employee', 'manager', 'admin']);
                     
                     if ($locationId) {
                         $query->where('location_id', $locationId);
@@ -391,9 +372,9 @@ class ListPayrolls extends ListRecords
 
                     if ($totalUsers === 0) {
                         Notification::make()
-                            ->title('Tidak ada karyawan')
+                            ->title('Tidak ada user')
                             ->warning()
-                            ->body('Tidak ada karyawan yang ditemukan untuk regenerate payroll.')
+                            ->body('Tidak ada user yang ditemukan untuk regenerate payroll.')
                             ->send();
                         return;
                     }
@@ -420,17 +401,11 @@ class ListPayrolls extends ListRecords
                                 continue;
                             }
 
-                            // Calculate standard workdays
-                            $standardWorkdays = PayrollCalculator::calculateStandardWorkdays(
-                                $period->copy()->startOfMonth(),
-                                $period->copy()->endOfMonth()
-                            );
-
-                            // Generate payroll data
+                            // Generate payroll data (selalu pass null agar dihitung per-user)
                             $payrollData = PayrollCalculator::generateMonthlyPayroll(
                                 $user->id,
                                 $period,
-                                $standardWorkdays
+                                null // Always calculate per user based on their settings
                             );
 
                             // Update payroll
@@ -462,7 +437,7 @@ class ListPayrolls extends ListRecords
                         $message .= ", {$errorCount} error";
                         
                         // Get common error message
-                        $commonError = "Kebanyakan error karena karyawan belum memiliki Nilai HK. Pastikan lokasi atau karyawan memiliki nilai HK yang sudah di-set.";
+                        $commonError = "Kebanyakan error karena user belum memiliki Nilai HK. Pastikan lokasi atau user memiliki nilai HK yang sudah di-set.";
                         
                         Notification::make()
                             ->title('Regenerate Payroll Selesai')
@@ -549,7 +524,8 @@ class ListPayrolls extends ListRecords
                 }),
 
             CreateAction::make()
-                ->label('Buat Payroll Manual'),
+                ->label('Buat Payroll Manual')
+                ->hidden(), // Hidden karena payroll sudah auto-create dari kehadiran
         ];
     }
 }

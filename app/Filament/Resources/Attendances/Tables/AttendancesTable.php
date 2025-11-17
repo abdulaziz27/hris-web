@@ -165,6 +165,7 @@ class AttendancesTable
                     ->label('Ekspor CSV')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
+                    ->hidden()
                     ->action(function ($livewire) {
                         $query = $livewire->getFilteredSortedTableQuery();
 

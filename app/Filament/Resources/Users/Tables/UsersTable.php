@@ -20,16 +20,28 @@ class UsersTable
             ->columns([
                 ImageColumn::make('image_url')
                     ->label('Foto Profil')
-                    ->disk('public')
                     ->circular()
+                    ->size(50)
+                    // Build full URL from storage path
+                    ->getStateUsing(function ($record) {
+                        $imageUrl = $record->getRawOriginal('image_url');
+                        if (empty($imageUrl)) {
+                            return null;
+                        }
+                        // If already full URL, return as is
+                        if (filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+                            return $imageUrl;
+                        }
+                        // Build full URL: /storage/images/users/xxx.jpg
+                        return asset('storage/' . $imageUrl);
+                    })
                     ->defaultImageUrl(fn () => 'data:image/svg+xml;base64,'.base64_encode('
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" style="background-color: #F3F4F6;">
                             <g transform="translate(25, 25)">
                                 <path fill="#9CA3AF" fill-rule="evenodd" d="M-5 -10a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM-8.249 4.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 010 6.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd"/>
                             </g>
                         </svg>
-                    '))
-                    ->size(50),
+                    ')),
                 TextColumn::make('name')
                     ->label('Nama')
                     ->searchable()

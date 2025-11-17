@@ -80,17 +80,33 @@ class LeaveController extends Controller
             'leave_type_id' => 'required|exists:leave_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'total_days' => 'nullable|integer|min:0', // Allow manual override
             'reason' => 'nullable|string',
             'attachment' => 'nullable|file|max:2048', // Max 2MB
         ]);
 
         $userId = $request->user()->id;
+        $user = $request->user();
 
-        // Calculate total days excluding weekends and holidays
         // Parse dates as date-only in app timezone to avoid timezone shift
         $startDate = Carbon::createFromFormat('Y-m-d', $validated['start_date'], config('app.timezone'))->startOfDay();
         $endDate = Carbon::createFromFormat('Y-m-d', $validated['end_date'], config('app.timezone'))->startOfDay();
-        $totalDays = WorkdayCalculator::countWorkdaysExcludingHolidays($startDate, $endDate);
+        
+        // ✅ SIMPLE: Calculate total days automatically if not provided (all days in range)
+        if (!isset($validated['total_days']) || $validated['total_days'] === null) {
+            $totalDays = WorkdayCalculator::countTotalDays($startDate, $endDate);
+        } else {
+            // Use manual total_days from request
+            $totalDays = (int) $validated['total_days'];
+        }
+        
+        // Validasi: total_days tidak boleh lebih dari range days
+        $rangeDays = WorkdayCalculator::countTotalDays($startDate, $endDate);
+        if ($totalDays > $rangeDays) {
+            return response()->json([
+                'message' => "Total hari cuti tidak boleh lebih dari {$rangeDays} hari (range tanggal yang dipilih: {$validated['start_date']} sampai {$validated['end_date']}).",
+            ], 422);
+        }
 
         // Check leave balance
         $year = $startDate->year;
@@ -154,12 +170,17 @@ class LeaveController extends Controller
             'leave_type_id' => 'sometimes|exists:leave_types,id',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'total_days' => 'nullable|integer|min:0', // Allow manual override
             'reason' => 'nullable|string',
             'attachment_url' => 'nullable|string',
         ]);
 
-        // Recalculate total days if dates changed
-        if (isset($validated['start_date']) || isset($validated['end_date'])) {
+        // Recalculate total days if dates changed (unless manually provided)
+        $startDate = null;
+        $endDate = null;
+        $totalDays = null;
+        
+        if ((isset($validated['start_date']) || isset($validated['end_date'])) && !isset($validated['total_days'])) {
             // ✅ Parse dates as date-only in app timezone to avoid timezone shift
             $startDateStr = $validated['start_date'] ?? $leave->start_date->format('Y-m-d');
             $endDateStr = $validated['end_date'] ?? $leave->end_date->format('Y-m-d');
@@ -167,7 +188,38 @@ class LeaveController extends Controller
             $startDate = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'))->startOfDay();
             $endDate = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'))->startOfDay();
             
-            $validated['total_days'] = WorkdayCalculator::countWorkdaysExcludingHolidays($startDate, $endDate);
+            // ✅ SIMPLE: Calculate total days automatically (all days in range)
+            $totalDays = WorkdayCalculator::countTotalDays($startDate, $endDate);
+            $validated['total_days'] = $totalDays;
+        } elseif (isset($validated['total_days'])) {
+            // Use manual total_days from request
+            $totalDays = (int) $validated['total_days'];
+            $validated['total_days'] = $totalDays;
+            
+            // Get dates for validation
+            $startDateStr = $validated['start_date'] ?? $leave->start_date->format('Y-m-d');
+            $endDateStr = $validated['end_date'] ?? $leave->end_date->format('Y-m-d');
+            $startDate = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'))->startOfDay();
+            $endDate = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'))->startOfDay();
+        } elseif (isset($validated['start_date']) || isset($validated['end_date'])) {
+            // Dates changed but total_days not provided, need to get dates for validation
+            $startDateStr = $validated['start_date'] ?? $leave->start_date->format('Y-m-d');
+            $endDateStr = $validated['end_date'] ?? $leave->end_date->format('Y-m-d');
+            $startDate = Carbon::createFromFormat('Y-m-d', $startDateStr, config('app.timezone'))->startOfDay();
+            $endDate = Carbon::createFromFormat('Y-m-d', $endDateStr, config('app.timezone'))->startOfDay();
+            $totalDays = $leave->total_days; // Use existing total_days
+        }
+        
+        // Validasi: total_days tidak boleh lebih dari range days (jika dates atau total_days diubah)
+        if ($startDate && $endDate && $totalDays !== null) {
+            $rangeDays = WorkdayCalculator::countTotalDays($startDate, $endDate);
+            if ($totalDays > $rangeDays) {
+                $startDateStr = $startDate->format('Y-m-d');
+                $endDateStr = $endDate->format('Y-m-d');
+                return response()->json([
+                    'message' => "Total hari cuti tidak boleh lebih dari {$rangeDays} hari (range tanggal yang dipilih: {$startDateStr} sampai {$endDateStr}).",
+                ], 422);
+            }
         }
 
         $leave->update($validated);

@@ -17,11 +17,17 @@ class AttendanceResource extends Resource
 {
     protected static ?string $model = Attendance::class;
 
+    protected static ?string $navigationLabel = 'Detail Kehadiran';
+
+    protected static ?string $modelLabel = 'Kehadiran';
+
+    protected static ?string $pluralModelLabel = 'Kehadiran';
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clock';
 
-    protected static UnitEnum|string|null $navigationGroup = 'Dashboard Absensi';
+    protected static UnitEnum|string|null $navigationGroup = 'Laporan Absensi'; // Diubah dari 'Dashboard Absensi' agar muncul setelah 'Laporan'
 
-    protected static ?int $navigationSort = 30;
+    protected static ?int $navigationSort = 5; // Setelah Laporan (4)
 
     public static function form(Schema $schema): Schema
     {

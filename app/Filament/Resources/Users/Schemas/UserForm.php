@@ -90,6 +90,23 @@ class UserForm
                     ->preload()
                     ->helperText('Pilih lokasi kerja default untuk karyawan (opsional)')
                     ->reactive(),
+                Select::make('workdays_per_week')
+                    ->label('Hari Kerja Per Minggu')
+                    ->options([
+                        5 => '5 hari (Senin-Jumat)',
+                        6 => '6 hari (Senin-Sabtu)',
+                        7 => '7 hari (Full)',
+                    ])
+                    ->default(5)
+                    ->required()
+                    ->helperText('Jumlah hari kerja per minggu untuk menentukan weekend dan standard workdays'),
+                TextInput::make('standard_workdays_per_month')
+                    ->label('Hari Kerja Standar Per Bulan (Override)')
+                    ->numeric()
+                    ->minValue(1)
+                    ->maxValue(31)
+                    ->nullable()
+                    ->helperText('Opsional. Jika diisi, akan digunakan sebagai standard workdays. Jika kosong, akan dihitung otomatis dari hari kerja per minggu.'),
                 TextInput::make('nilai_hk')
                     ->label('Nilai HK (Override)')
                     ->numeric()

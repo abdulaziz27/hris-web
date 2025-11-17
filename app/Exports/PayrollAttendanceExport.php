@@ -125,6 +125,8 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
             // Sesuai Hasil Wawancara column removed
             // Jobdesk = user.position (from master data)
             // Hadir: gunakan present_days dari payroll jika ada dan sudah approved, otherwise formula SUM
+            // Cuti: jumlah hari cuti dibayar (approved + is_paid = true, name contains "Cuti" but not "Sakit")
+            // Sakit: jumlah hari sakit dibayar (approved + is_paid = true, name contains "Sakit")
             if ($payroll) {
                 // Store payroll data for use in AfterSheet
                 $this->payrollData[$user->id] = [
@@ -134,6 +136,10 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 
                 $row[] = $payroll->standard_workdays ?? 0;
                 // Hadir: akan di-set di AfterSheet (nilai jika approved, formula jika draft)
+                $row[] = 0; // Placeholder, will be replaced in AfterSheet
+                // Cuti: akan di-set di AfterSheet
+                $row[] = 0; // Placeholder, will be replaced in AfterSheet
+                // Sakit: akan di-set di AfterSheet
                 $row[] = 0; // Placeholder, will be replaced in AfterSheet
                 // Persentase will be formula: (Hadir / Hari Kerja) * 100
                 $row[] = 0; // Placeholder, will be replaced by formula in AfterSheet
@@ -145,13 +151,18 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 // Use calculated data
                 $standardWorkdays = PayrollCalculator::calculateStandardWorkdays(
                     $this->startDate->copy()->startOfMonth(),
-                    $this->endDate->copy()->endOfMonth()
+                    $this->endDate->copy()->endOfMonth(),
+                    $user->id
                 );
                 $nilaiHK = PayrollCalculator::getNilaiHK($user->id, $user->location_id);
 
                 $row[] = $standardWorkdays;
-                // Hadir will be formula: SUM of attendance columns (1/0 values)
+                // Hadir will be formula: SUM of attendance columns (1/0 values) + cuti + sakit
                 $row[] = 0; // Placeholder, will be replaced by formula in AfterSheet
+                // Cuti: akan di-set di AfterSheet
+                $row[] = 0; // Placeholder, will be replaced in AfterSheet
+                // Sakit: akan di-set di AfterSheet
+                $row[] = 0; // Placeholder, will be replaced in AfterSheet
                 // Persentase will be formula: (Hadir / Hari Kerja) * 100
                 $row[] = 0; // Placeholder, will be replaced by formula in AfterSheet
                 $row[] = $nilaiHK; // Store as number, not formatted string
@@ -184,7 +195,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
 
         // Kolom summary dimulai setelah kolom tanggal
         $summaryStartIndex = 4 + $dateCount;
-        $summaryCols = ['Hari Kerja', 'Hadir', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk'];
+        $summaryCols = ['Hari Kerja', 'Hadir', 'Cuti', 'Sakit', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk'];
 
         foreach ($summaryCols as $index => $colName) {
             $col = $this->getColumnLetter($summaryStartIndex + $index);
@@ -289,7 +300,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                     $headings[] = $dayNames[$dayIndex];
                     $currentDate->addDay();
                 }
-                $headings = array_merge($headings, ['Hari Kerja', 'Hadir', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk']);
+                $headings = array_merge($headings, ['Hari Kerja', 'Hadir', 'Cuti', 'Sakit', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk']);
                 
                 // Calculate lastCol using 1-based index (A = 1, B = 2, etc.)
                 $lastCol = $this->getColumnLetter(count($headings));
@@ -322,7 +333,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 
                 // Merge summary columns
                 $summaryStartColIndex = 4 + $dateCount; // D = 4, setelah kolom tanggal
-                $summaryCols = ['Hari Kerja', 'Hadir', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk'];
+                $summaryCols = ['Hari Kerja', 'Hadir', 'Cuti', 'Sakit', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk'];
                 foreach ($summaryCols as $index => $colName) {
                     $colIndex = $summaryStartColIndex + $index;
                     $col = $this->getColumnLetter($colIndex);
@@ -419,13 +430,17 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                     // Calculate column indices for summary columns
                     $hariKerjaColIndex = $summaryStartColIndex + 0; // Index 0 = "Hari Kerja"
                     $hadirColIndex = $summaryStartColIndex + 1;     // Index 1 = "Hadir"
-                    $persentaseColIndex = $summaryStartColIndex + 2; // Index 2 = "Persentase"
-                    $nilaiHKColIndex = $summaryStartColIndex + 3;    // Index 3 = "Nilai HK"
-                    $estimasiGajiColIndex = $summaryStartColIndex + 4; // Index 4 = "Estimasi Gaji"
-                    $jobdeskColIndex = $summaryStartColIndex + 5;    // Index 5 = "Jobdesk"
+                    $cutiColIndex = $summaryStartColIndex + 2;      // Index 2 = "Cuti"
+                    $sakitColIndex = $summaryStartColIndex + 3;    // Index 3 = "Sakit"
+                    $persentaseColIndex = $summaryStartColIndex + 4; // Index 4 = "Persentase"
+                    $nilaiHKColIndex = $summaryStartColIndex + 5;    // Index 5 = "Nilai HK"
+                    $estimasiGajiColIndex = $summaryStartColIndex + 6; // Index 6 = "Estimasi Gaji"
+                    $jobdeskColIndex = $summaryStartColIndex + 7;    // Index 7 = "Jobdesk"
                     
                     $hariKerjaCol = $this->getColumnLetter($hariKerjaColIndex);
                     $hadirCol = $this->getColumnLetter($hadirColIndex);
+                    $cutiCol = $this->getColumnLetter($cutiColIndex);
+                    $sakitCol = $this->getColumnLetter($sakitColIndex);
                     $persentaseCol = $this->getColumnLetter($persentaseColIndex);
                     $nilaiHKCol = $this->getColumnLetter($nilaiHKColIndex);
                     $estimasiGajiCol = $this->getColumnLetter($estimasiGajiColIndex);
@@ -445,20 +460,54 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                             $presentDaysValue = $this->payrollData[$userId]['present_days'];
                         }
                         
-                        // Formula 1: Hadir
+                        // Formula 1: Hadir (effective present days = attendance + cuti + sakit)
                         // Jika payroll sudah approved, gunakan nilai present_days langsung (bukan formula)
-                        // Jika tidak, gunakan formula SUM dari attendance columns
+                        // Jika tidak, gunakan formula SUM dari attendance columns + cuti + sakit
                         $hadirCell = $hadirCol . $row;
                         if ($usePresentDays && $presentDaysValue !== null) {
-                            // Gunakan nilai present_days yang sudah dikoreksi
+                            // Gunakan nilai present_days yang sudah dikoreksi (include cuti + sakit)
                             $sheet->setCellValue($hadirCell, $presentDaysValue);
                         } else {
-                            // Gunakan formula SUM dari attendance columns
+                            // Calculate cuti and sakit days for this user
+                            $cutiDays = \App\Services\PayrollCalculator::calculateCutiDays(
+                                $userId,
+                                $this->startDate->copy()->startOfMonth(),
+                                $this->endDate->copy()->endOfMonth()
+                            );
+                            $sakitDays = \App\Services\PayrollCalculator::calculateSakitDays(
+                                $userId,
+                                $this->startDate->copy()->startOfMonth(),
+                                $this->endDate->copy()->endOfMonth()
+                            );
+                            
+                            // Gunakan formula SUM dari attendance columns + cuti + sakit
                             $attendanceStartCell = $attendanceStartCol . $row;
                             $attendanceEndCell = $attendanceEndCol . $row;
+                            if ($cutiDays > 0 || $sakitDays > 0) {
+                                $hadirFormula = "=SUM({$attendanceStartCell}:{$attendanceEndCell})+{$cutiDays}+{$sakitDays}";
+                            } else {
                             $hadirFormula = "=SUM({$attendanceStartCell}:{$attendanceEndCell})";
+                            }
                             $sheet->setCellValue($hadirCell, $hadirFormula);
                         }
+                        
+                        // Set Cuti column: cuti days
+                        $cutiCell = $cutiCol . $row;
+                        $cutiDays = \App\Services\PayrollCalculator::calculateCutiDays(
+                            $userId,
+                            $this->startDate->copy()->startOfMonth(),
+                            $this->endDate->copy()->endOfMonth()
+                        );
+                        $sheet->setCellValue($cutiCell, $cutiDays);
+                        
+                        // Set Sakit column: sakit days
+                        $sakitCell = $sakitCol . $row;
+                        $sakitDays = \App\Services\PayrollCalculator::calculateSakitDays(
+                            $userId,
+                            $this->startDate->copy()->startOfMonth(),
+                            $this->endDate->copy()->endOfMonth()
+                        );
+                        $sheet->setCellValue($sakitCell, $sakitDays);
                         
                         // Formula 2: Persentase = (Hadir / Hari Kerja) * 100
                         // Handle division by zero: IF(HariKerja=0, 0, (Hadir/HariKerja)*100)
@@ -476,6 +525,16 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                     }
                     
                     // Format cells to display properly
+                    // Cuti column: format as number with 0 decimal places
+                    $sheet->getStyle($cutiCol . '7:' . $cutiCol . $lastDataRow)->applyFromArray([
+                        'numberFormat' => ['formatCode' => '0'],
+                    ]);
+                    
+                    // Sakit column: format as number with 0 decimal places
+                    $sheet->getStyle($sakitCol . '7:' . $sakitCol . $lastDataRow)->applyFromArray([
+                        'numberFormat' => ['formatCode' => '0'],
+                    ]);
+                    
                     // Persentase column: format as percentage with 0 decimal places
                     $sheet->getStyle($persentaseCol . '7:' . $persentaseCol . $lastDataRow)->applyFromArray([
                         'numberFormat' => ['formatCode' => '0"%"'],
@@ -508,6 +567,14 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                     // Hadir: SUM
                     $hadirTotalCell = $hadirCol . $totalRow;
                     $sheet->setCellValue($hadirTotalCell, "=SUM({$hadirCol}7:{$hadirCol}{$lastDataRow})");
+                    
+                    // Cuti: SUM
+                    $cutiTotalCell = $cutiCol . $totalRow;
+                    $sheet->setCellValue($cutiTotalCell, "=SUM({$cutiCol}7:{$cutiCol}{$lastDataRow})");
+                    
+                    // Sakit: SUM
+                    $sakitTotalCell = $sakitCol . $totalRow;
+                    $sheet->setCellValue($sakitTotalCell, "=SUM({$sakitCol}7:{$sakitCol}{$lastDataRow})");
                     
                     // Persentase: Average (or leave empty, as percentage total doesn't make sense)
                     $persentaseTotalCell = $persentaseCol . $totalRow;
@@ -545,6 +612,12 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                         'numberFormat' => ['formatCode' => '#,##0'],
                     ]);
                     $sheet->getStyle($hadirTotalCell)->applyFromArray([
+                        'numberFormat' => ['formatCode' => '#,##0'],
+                    ]);
+                    $sheet->getStyle($cutiTotalCell)->applyFromArray([
+                        'numberFormat' => ['formatCode' => '#,##0'],
+                    ]);
+                    $sheet->getStyle($sakitTotalCell)->applyFromArray([
                         'numberFormat' => ['formatCode' => '#,##0'],
                     ]);
                     $sheet->getStyle($estimasiGajiTotalCell)->applyFromArray([

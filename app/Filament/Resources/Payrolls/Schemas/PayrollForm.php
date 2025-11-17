@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Payrolls\Schemas;
 use App\Services\PayrollCalculator;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -52,20 +53,34 @@ class PayrollForm
                                         }
                             }),
 
-                        TextInput::make('standard_workdays')
+                        Placeholder::make('standard_workdays_info')
                             ->label('Hari Kerja Standar')
-                            ->numeric()
-                            ->default(21)
-                            ->required()
-                                    ->minValue(1)
                             ->reactive()
-                            ->afterStateUpdated(function ($state, $set, $get) {
+                            ->content(function ($get) {
                                         $userId = $get('user_id');
-                                        if ($userId && $state && $state > 0) {
-                                            self::calculatePayroll($userId, $get, $set);
+                                $period = $get('period');
+                                
+                                if (!$userId || !$period) {
+                                    return 'Akan dihitung otomatis setelah memilih karyawan dan periode';
+                                }
+                                
+                                try {
+                                    $periodDate = $period instanceof \Carbon\Carbon 
+                                        ? $period->copy()->startOfMonth()
+                                        : Carbon::parse($period)->startOfMonth();
+                                    
+                                    $standardWorkdays = PayrollCalculator::calculateStandardWorkdays(
+                                        $periodDate->copy()->startOfMonth(),
+                                        $periodDate->copy()->endOfMonth(),
+                                        $userId
+                                    );
+                                    
+                                    return "{$standardWorkdays} hari (otomatis dari setting karyawan)";
+                                } catch (\Exception $e) {
+                                    return 'Akan dihitung otomatis';
                                         }
                             })
-                            ->helperText('Jumlah hari kerja standar dalam bulan (default: 21 hari)'),
+                            ->helperText('Hari kerja standar dihitung otomatis berdasarkan setting karyawan (standard_workdays_per_month atau workdays_per_week)'),
                             ]),
 
                         Grid::make(3)
@@ -104,7 +119,7 @@ class PayrollForm
                                     \Log::error('Error in present_days afterStateUpdated: ' . $e->getMessage());
                                 }
                             })
-                            ->helperText('Total kehadiran (dihitung otomatis dari attendance). Bisa di-edit manual jika ada kesalahan sistem atau koreksi.'),
+                            ->helperText('Total = Hari Hadir (Kehadiran) + Cuti + Sakit. Dihitung otomatis, bisa di-edit manual jika perlu koreksi.'),
 
                         // hk_review tidak digunakan untuk perhitungan, hanya untuk jaga-jaga di masa depan
                         // Final salary langsung dari present_days (estimated_salary)
@@ -126,6 +141,107 @@ class PayrollForm
                                     ->dehydrated(true)
                                     ->helperText('Persentase = (Hari Hadir / Hari Kerja Standar) × 100%'),
                             ]),
+
+                        // Breakdown: Kehadiran, Cuti, dan Sakit (read-only, untuk transparansi)
+                        Grid::make(3)
+                            ->schema([
+                                Placeholder::make('attendance_days_breakdown')
+                                    ->label('Hadir')
+                                    ->content(function ($get, $record) {
+                                        if (!$record && !$get('user_id')) {
+                                            return '-';
+                                        }
+                                        
+                                        $userId = $record?->user_id ?? $get('user_id');
+                                        $period = $record?->period ?? $get('period');
+                                        
+                                        if (!$userId || !$period) {
+                                            return '-';
+                                        }
+                                        
+                                        try {
+                                            $periodDate = $period instanceof \Carbon\Carbon 
+                                                ? $period->copy()->startOfMonth()
+                                                : Carbon::parse($period)->startOfMonth();
+                                            $start = $periodDate->copy()->startOfMonth();
+                                            $end = $periodDate->copy()->endOfMonth();
+                                            
+                                            $user = \App\Models\User::find($userId);
+                                            $attendanceDays = PayrollCalculator::calculatePresentDays(
+                                                $userId, 
+                                                $start, 
+                                                $end, 
+                                                $user->location_id ?? null
+                                            );
+                                            
+                                            return $attendanceDays . ' hari';
+                                        } catch (\Exception $e) {
+                                            return '-';
+                                        }
+                                    })
+                                    ->helperText('Hari dengan check-in kehadiran'),
+                                
+                                Placeholder::make('cuti_days_breakdown')
+                                    ->label('Cuti')
+                                    ->content(function ($get, $record) {
+                                        if (!$record && !$get('user_id')) {
+                                            return '-';
+                                        }
+                                        
+                                        $userId = $record?->user_id ?? $get('user_id');
+                                        $period = $record?->period ?? $get('period');
+                                        
+                                        if (!$userId || !$period) {
+                                            return '-';
+                                        }
+                                        
+                                        try {
+                                            $periodDate = $period instanceof \Carbon\Carbon 
+                                                ? $period->copy()->startOfMonth()
+                                                : Carbon::parse($period)->startOfMonth();
+                                            $start = $periodDate->copy()->startOfMonth();
+                                            $end = $periodDate->copy()->endOfMonth();
+                                            
+                                            $cutiDays = PayrollCalculator::calculateCutiDays($userId, $start, $end);
+                                            
+                                            return $cutiDays . ' hari';
+                                        } catch (\Exception $e) {
+                                            return '-';
+                                        }
+                                    })
+                                    ->helperText('Hari cuti yang approved dan dibayar'),
+                                
+                                Placeholder::make('sakit_days_breakdown')
+                                    ->label('Sakit')
+                                    ->content(function ($get, $record) {
+                                        if (!$record && !$get('user_id')) {
+                                            return '-';
+                                        }
+                                        
+                                        $userId = $record?->user_id ?? $get('user_id');
+                                        $period = $record?->period ?? $get('period');
+                                        
+                                        if (!$userId || !$period) {
+                                            return '-';
+                                        }
+                                        
+                                        try {
+                                            $periodDate = $period instanceof \Carbon\Carbon 
+                                                ? $period->copy()->startOfMonth()
+                                                : Carbon::parse($period)->startOfMonth();
+                                            $start = $periodDate->copy()->startOfMonth();
+                                            $end = $periodDate->copy()->endOfMonth();
+                                            
+                                            $sakitDays = PayrollCalculator::calculateSakitDays($userId, $start, $end);
+                                            
+                                            return $sakitDays . ' hari';
+                                        } catch (\Exception $e) {
+                                            return '-';
+                                        }
+                                    })
+                                    ->helperText('Hari sakit yang approved dan dibayar'),
+                            ])
+                            ->visible(fn ($get, $record) => ($get('user_id') ?? $record?->user_id) !== null && ($get('period') ?? $record?->period) !== null),
 
                         Grid::make(3)
                             ->schema([
@@ -219,12 +335,6 @@ class PayrollForm
                     // If period is invalid, use current month
                     $period = now()->startOfMonth();
                 }
-        }
-
-        $standardWorkdays = (int) ($get('standard_workdays') ?? 21);
-
-            if ($standardWorkdays <= 0) {
-                return; // Avoid division by zero
             }
 
             // Get user with location
@@ -232,6 +342,14 @@ class PayrollForm
             if (! $user) {
                 return;
             }
+        
+        // SELALU auto-calculate standard_workdays dari userId (tidak ada field manual lagi)
+        $periodStart = $period->copy()->startOfMonth();
+        $periodEnd = $period->copy()->endOfMonth();
+        $standardWorkdays = PayrollCalculator::calculateStandardWorkdays($periodStart, $periodEnd, $userId);
+        
+        // Set standard_workdays ke form data (meskipun field tidak ada di form, tetap perlu untuk save)
+        $set('standard_workdays', $standardWorkdays);
 
             // Get Nilai HK from master data (prioritas: user.nilai_hk OR location.nilai_hk)
             $nilaiHK = PayrollCalculator::getNilaiHK($userId, $user->location_id ?? null);
@@ -251,14 +369,15 @@ class PayrollForm
             $basicSalary = PayrollCalculator::calculateBasicSalary($nilaiHK, $standardWorkdays);
         $set('basic_salary', $basicSalary);
 
-            // Calculate present days (only if period is set and valid, with location timezone awareness)
+            // Calculate effective present days (kehadiran + paid leave)
             // Hanya set jika belum ada nilai (untuk tidak override edit manual)
             $currentPresentDays = $get('present_days');
             if ($currentPresentDays === null || $currentPresentDays === '' || $currentPresentDays === 0) {
                 $start = $period->copy()->startOfMonth();
                 $end = $period->copy()->endOfMonth();
                 $user = \App\Models\User::find($userId);
-                $presentDays = PayrollCalculator::calculatePresentDays($userId, $start, $end, $user->location_id ?? null);
+                // Use calculateEffectivePresentDays to include paid leave
+                $presentDays = PayrollCalculator::calculateEffectivePresentDays($userId, $start, $end, $user->location_id ?? null);
                 $set('present_days', $presentDays);
             } else {
                 // Gunakan nilai yang sudah ada (bisa dari edit manual)

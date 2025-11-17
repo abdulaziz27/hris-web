@@ -31,6 +31,8 @@ class User extends Authenticatable implements FilamentUser
         'departemen_id',
         'shift_kerja_id',
         'location_id',
+        'workdays_per_week',
+        'standard_workdays_per_month',
         'basic_salary',
         'nilai_hk',
         'salary_type',
@@ -62,6 +64,28 @@ class User extends Authenticatable implements FilamentUser
             'basic_salary' => 'decimal:2',
             'nilai_hk' => 'decimal:2',
         ];
+    }
+
+    /**
+     * Get the full URL for the user's profile image.
+     * Returns full URL if image_url exists, null otherwise.
+     * 
+     * Note: This accessor is used for API responses.
+     * For Filament ImageColumn, use getRawOriginal('image_url') to get the storage path.
+     */
+    public function getImageUrlAttribute($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        // If already a full URL, return as is
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        // Build full URL from storage path
+        return asset('storage/' . $value);
     }
 
     public function attendances()
