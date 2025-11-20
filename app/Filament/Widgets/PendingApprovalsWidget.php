@@ -97,7 +97,7 @@ class PendingApprovalsWidget extends BaseWidget
         $locationName = $locationId ? Location::find($locationId)?->name : null;
         $dateRangeText = $this->getDateRangeText($startDate, $endDate);
         
-        $heading = 'Leave Menunggu Persetujuan';
+        $heading = 'Izin Cuti/Sakit Menunggu Persetujuan';
         
         $parts = array_filter([$dateRangeText, $locationName]);
         if (!empty($parts)) {

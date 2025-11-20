@@ -4,12 +4,13 @@ namespace App\Filament\Widgets;
 
 use App\Models\Attendance;
 use App\Models\Departemen;
+use App\Models\Holiday;
 use App\Models\Jabatan;
 use App\Models\Leave;
 use App\Models\Location;
-use App\Models\Overtime;
 use App\Models\ShiftKerja;
 use App\Models\User;
+use App\Support\WorkdayCalculator;
 use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -40,35 +41,40 @@ class DashboardStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->color('primary'),
 
-            Stat::make('Total Jabatan', Jabatan::count())
-                ->description('Jumlah jabatan tersedia')
-                ->descriptionIcon('heroicon-m-briefcase')
-                ->color('success'),
-
             Stat::make('Total Departemen', Departemen::count())
                 ->description('Jumlah departemen tersedia')
                 ->descriptionIcon('heroicon-m-building-office')
                 ->color('info'),
 
+            Stat::make('Total Jabatan', Jabatan::count())
+                ->description('Jumlah jabatan tersedia')
+                ->descriptionIcon('heroicon-m-briefcase')
+                ->color('info'),
+
             Stat::make('Total Shift Kerja', ShiftKerja::count())
                 ->description('Jumlah shift kerja')
-                ->descriptionIcon('heroicon-m-clock')
-                ->color('warning'),
+                ->descriptionIcon('heroicon-m-calendar')
+                ->color('primary'),
 
-            Stat::make('Overtime Disetujui', $this->getApprovedOvertime($locationId, $startDate, $endDate))
-                ->description($this->getOvertimeDescription($locationName, $dateRangeDescription))
-                ->descriptionIcon('heroicon-m-plus-circle')
-                ->color('success'),
-
-            Stat::make('Cuti Disetujui', $this->getApprovedLeave($locationId, $startDate, $endDate))
-                ->description($this->getLeaveDescription($locationName, $dateRangeDescription))
+            Stat::make('Hadir Tepat Waktu', $this->getOnTimeAttendance($locationId, $startDate, $endDate))
+                ->description($this->getAttendanceStatsDescription($locationName, $dateRangeDescription, 'Absensi tepat waktu'))
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success'),
 
-            Stat::make('Absensi Lengkap', $this->getCompleteAttendance($locationId, $startDate, $endDate))
-                ->description($this->getAttendanceDescription($locationName, $dateRangeDescription))
+            Stat::make('Terlambat', $this->getLateAttendance($locationId, $startDate, $endDate))
+                ->description($this->getAttendanceStatsDescription($locationName, $dateRangeDescription, 'Absensi terlambat'))
+                ->descriptionIcon('heroicon-m-clock')
+                ->color('warning'),
+
+            Stat::make('Tidak Hadir', $this->getAbsentAttendance($locationId, $startDate, $endDate))
+                ->description($this->getAttendanceStatsDescription($locationName, $dateRangeDescription, 'Tidak hadir'))
+                ->descriptionIcon('heroicon-m-x-circle')
+                ->color('danger'),
+
+            Stat::make('Cuti Disetujui', $this->getApprovedLeave($locationId, $startDate, $endDate))
+                ->description($this->getLeaveDescription($locationName, $dateRangeDescription))
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color('primary'),
+                ->color('success'),
         ];
     }
 
@@ -83,9 +89,9 @@ class DashboardStatsWidget extends BaseWidget
         return $query->count();
     }
 
-    private function getApprovedOvertime(?int $locationId, ?string $startDate, ?string $endDate): int
+    private function getOnTimeAttendance(?int $locationId, ?string $startDate, ?string $endDate): int
     {
-        $query = Overtime::where('status', 'approved');
+        $query = Attendance::where('status', 'on_time');
 
         if ($startDate) {
             $query->whereDate('date', '>=', $startDate);
@@ -100,12 +106,106 @@ class DashboardStatsWidget extends BaseWidget
         }
 
         if ($locationId) {
-            $query->whereHas('user', function ($q) use ($locationId) {
-                $q->where('location_id', $locationId);
-            });
+            $query->where('location_id', $locationId);
         }
 
         return $query->count();
+    }
+
+    private function getLateAttendance(?int $locationId, ?string $startDate, ?string $endDate): int
+    {
+        $query = Attendance::where('status', 'late');
+
+        if ($startDate) {
+            $query->whereDate('date', '>=', $startDate);
+        } else {
+            // Default to this month if no date range
+            $query->whereMonth('date', now()->month)
+                ->whereYear('date', now()->year);
+        }
+
+        if ($endDate) {
+            $query->whereDate('date', '<=', $endDate);
+        }
+
+        if ($locationId) {
+            $query->where('location_id', $locationId);
+        }
+
+        return $query->count();
+    }
+
+    private function getAbsentAttendance(?int $locationId, ?string $startDate, ?string $endDate): int
+    {
+        // Tentukan periode tanggal
+        if ($startDate && $endDate) {
+            $start = Carbon::parse($startDate)->startOfDay();
+            $end = Carbon::parse($endDate)->endOfDay();
+        } else {
+            // Default to this month if no date range
+            $start = Carbon::now()->startOfMonth()->startOfDay();
+            $end = Carbon::now()->endOfMonth()->endOfDay();
+        }
+
+        // Get total users yang seharusnya absen (berdasarkan lokasi)
+        $usersQuery = User::query();
+        if ($locationId) {
+            $usersQuery->where('location_id', $locationId);
+        }
+        $totalUsers = $usersQuery->count();
+
+        if ($totalUsers == 0) {
+            return 0;
+        }
+
+        // Hitung total tidak hadir per hari kerja
+        $totalAbsent = 0;
+        $current = $start->copy();
+
+        // Get all holidays in the range for performance
+        $holidays = Holiday::whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->pluck('date')
+            ->map(fn ($date) => Carbon::parse($date)->toDateString())
+            ->toArray();
+
+        // Get all attendance records in the range for performance
+        $attendanceQuery = Attendance::whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->whereNotNull('time_in');
+        
+        if ($locationId) {
+            $attendanceQuery->where('location_id', $locationId);
+        }
+        
+        $attendances = $attendanceQuery->get()
+            ->groupBy('date')
+            ->map(function ($group) {
+                return $group->pluck('user_id')->unique()->count();
+            });
+
+        while ($current <= $end) {
+            $dateString = $current->toDateString();
+            
+            // Cek apakah hari kerja (bukan weekend, bukan holiday)
+            $isWeekend = WorkdayCalculator::isWeekend($current, null, $locationId);
+            $isHoliday = in_array($dateString, $holidays);
+            
+            if (!$isWeekend && !$isHoliday) {
+                // Hari kerja - hitung yang tidak absen
+                // Hitung yang sudah absen (ada record attendance dengan time_in tidak null)
+                $attendedCount = $attendances->get($dateString, 0);
+                
+                // Tidak hadir = Total karyawan - yang sudah absen
+                $absentToday = $totalUsers - $attendedCount;
+                
+                if ($absentToday > 0) {
+                    $totalAbsent += $absentToday;
+                }
+            }
+            
+            $current->addDay();
+        }
+
+        return $totalAbsent;
     }
 
     private function getApprovedLeave(?int $locationId, ?string $startDate, ?string $endDate): int
@@ -134,29 +234,6 @@ class DashboardStatsWidget extends BaseWidget
         return $query->count();
     }
 
-    private function getCompleteAttendance(?int $locationId, ?string $startDate, ?string $endDate): int
-    {
-        $query = Attendance::whereNotNull('time_in')
-            ->whereNotNull('time_out');
-
-        if ($startDate) {
-            $query->whereDate('date', '>=', $startDate);
-        } else {
-            // Default to this month if no date range
-            $query->whereMonth('date', now()->month)
-                ->whereYear('date', now()->year);
-        }
-
-        if ($endDate) {
-            $query->whereDate('date', '<=', $endDate);
-        }
-
-        if ($locationId) {
-            $query->where('location_id', $locationId);
-        }
-
-        return $query->count();
-    }
 
     private function getDateRangeDescription(?string $startDate, ?string $endDate): string
     {
@@ -171,22 +248,16 @@ class DashboardStatsWidget extends BaseWidget
         return 'Bulan ini';
     }
 
-    private function getOvertimeDescription(?string $locationName, string $dateRangeDescription): string
-    {
-        $parts = array_filter([$locationName, $dateRangeDescription]);
-        return !empty($parts) ? implode(' - ', $parts) : 'Bulan ini yang disetujui';
-    }
-
     private function getLeaveDescription(?string $locationName, string $dateRangeDescription): string
     {
         $parts = array_filter([$locationName, $dateRangeDescription]);
         return !empty($parts) ? implode(' - ', $parts) : 'Bulan ini yang disetujui';
     }
 
-    private function getAttendanceDescription(?string $locationName, string $dateRangeDescription): string
+    private function getAttendanceStatsDescription(?string $locationName, string $dateRangeDescription, string $suffix): string
     {
         $parts = array_filter([$locationName, $dateRangeDescription]);
-        return !empty($parts) ? implode(' - ', $parts) : 'Masuk & keluar bulan ini';
+        return !empty($parts) ? implode(' - ', $parts) : $suffix . ' bulan ini';
     }
 
     private function getPageFiltersSafe(): array

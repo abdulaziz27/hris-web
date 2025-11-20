@@ -2,12 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\AbsentEmployeesWidget;
 use App\Filament\Widgets\AttendanceChartWidget;
 use App\Filament\Widgets\CustomAccountWidget;
 use App\Filament\Widgets\DashboardStatsWidget;
 use App\Filament\Widgets\LatestAttendanceWidget;
 use App\Filament\Widgets\PendingApprovalsWidget;
-use App\Filament\Widgets\PendingOvertimeWidget;
 use App\Models\Location;
 use BackedEnum;
 use Filament\Forms\Components\DatePicker;
@@ -35,8 +35,8 @@ class Dashboard extends BaseDashboard
             DashboardStatsWidget::class, // Stats cards - moved from header widgets
             AttendanceChartWidget::class,
             LatestAttendanceWidget::class,
+            AbsentEmployeesWidget::class, // Karyawan Tidak Hadir
             PendingApprovalsWidget::class,
-            PendingOvertimeWidget::class,
             CustomAccountWidget::class,
         ];
     }

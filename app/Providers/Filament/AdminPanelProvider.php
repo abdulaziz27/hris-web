@@ -46,7 +46,6 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Widgets\AttendanceChartWidget::class,
                 \App\Filament\Widgets\LatestAttendanceWidget::class,
                 \App\Filament\Widgets\PendingApprovalsWidget::class,
-                \App\Filament\Widgets\PendingOvertimeWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

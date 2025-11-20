@@ -158,21 +158,40 @@ class LatestAttendanceWidget extends BaseWidget
                 TextColumn::make('status')
                     ->label('Status')
                     ->state(function (Attendance $record): string {
+                        // Jika belum masuk
                         if (! $record->time_in) {
-                            return 'Belum Masuk';
+                            return 'Tidak Hadir';
                         }
-                        if (! $record->time_out) {
-                            return 'Belum Pulang';
+                        
+                        // Tampilkan status dari database (on_time/late)
+                        $statusText = match ($record->status) {
+                            'on_time' => 'Tepat Waktu',
+                            'late' => 'Terlambat' . ($record->late_minutes ? ' (' . $record->late_minutes . ' menit)' : ''),
+                            'absent' => 'Tidak Hadir',
+                            default => ucfirst(str_replace('_', ' ', $record->status)),
+                        };
+                        
+                        // Tambahkan info jika belum checkout
+                        if ($record->time_in && ! $record->time_out) {
+                            $statusText .= ' • Belum Pulang';
                         }
 
-                        return 'Selesai';
+                        return $statusText;
                     })
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Selesai' => 'success',
-                        'Belum Pulang' => 'warning',
-                        'Belum Masuk' => 'danger',
-                    }),
+                    ->color(function (Attendance $record): string {
+                        if (! $record->time_in) {
+                            return 'danger';
+                        }
+                        
+                        return match ($record->status) {
+                            'on_time' => 'success',
+                            'late' => 'warning',
+                            'absent' => 'danger',
+                            default => 'gray',
+                        };
+                    })
+                    ->wrap(),
             ])
             ->paginated(false);
     }
