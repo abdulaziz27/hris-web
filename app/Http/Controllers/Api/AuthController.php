@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\TimezoneService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -50,8 +51,14 @@ class AuthController extends Controller
             'default_shift_detail' => $user->shiftKerja ? [
                 'id' => $user->shiftKerja->id,
                 'name' => $user->shiftKerja->name,
-                'start_time' => $user->shiftKerja->start_time,
-                'end_time' => $user->shiftKerja->end_time,
+                'start_time' => $this->formatTimeWithLocationTimezone(
+                    $user->shiftKerja->start_time,
+                    $user->location_id
+                ),
+                'end_time' => $this->formatTimeWithLocationTimezone(
+                    $user->shiftKerja->end_time,
+                    $user->location_id
+                ),
             ] : null,
             'department' => $user->departemen ? [
                 'id' => $user->departemen->id,
@@ -124,7 +131,7 @@ class AuthController extends Controller
         $user = $request->user();
 
         // Load relationships
-        $user->load(['shiftKerja', 'departemen', 'jabatan']);
+        $user->load(['shiftKerja', 'departemen', 'jabatan', 'location']);
 
         $response = [
             'user' => new UserResource($user),
@@ -140,8 +147,14 @@ class AuthController extends Controller
             'default_shift_detail' => $user->shiftKerja ? [
                 'id' => $user->shiftKerja->id,
                 'name' => $user->shiftKerja->name,
-                'start_time' => $user->shiftKerja->start_time,
-                'end_time' => $user->shiftKerja->end_time,
+                'start_time' => $this->formatTimeWithLocationTimezone(
+                    $user->shiftKerja->start_time,
+                    $user->location_id
+                ),
+                'end_time' => $this->formatTimeWithLocationTimezone(
+                    $user->shiftKerja->end_time,
+                    $user->location_id
+                ),
             ] : null,
             'department' => $user->departemen ? [
                 'id' => $user->departemen->id,
@@ -150,5 +163,36 @@ class AuthController extends Controller
         ];
 
         return response($response, 200);
+    }
+
+    /**
+     * Format waktu sebagai ISO 8601 datetime TANPA timezone offset
+     * Format: "2000-01-01T07:30:00" (datetime tanpa timezone)
+     * 
+     * Menggunakan format datetime TANPA timezone offset karena:
+     * 1. Flutter DateTime.parse() akan mengkonversi waktu dengan timezone offset ke UTC
+     * 2. Tanpa timezone offset, Flutter akan parse sebagai local time device (tidak di-convert)
+     * 3. Waktu shift di database sudah dalam format lokal universal, tidak perlu timezone offset
+     * 
+     * Catatan: Waktu shift di database adalah waktu lokal universal yang sama untuk semua timezone.
+     * Flutter akan menampilkan waktu sesuai timezone device, yang sudah benar karena waktu shift
+     * adalah waktu lokal universal (07:00 berarti 07:00 di semua timezone).
+     * 
+     * @param mixed $carbonTime Carbon instance atau null
+     * @param int|null $locationId ID lokasi user (tidak digunakan, tapi tetap di-parameter untuk konsistensi)
+     * @return string|null Format datetime "Y-m-d\TH:i:s" tanpa timezone offset atau null
+     */
+    private function formatTimeWithLocationTimezone($carbonTime, ?int $locationId): ?string
+    {
+        if (!$carbonTime) {
+            return null;
+        }
+
+        // Ambil waktu dari Carbon instance (H:i:s format)
+        $timeString = $carbonTime->format('H:i:s');
+
+        // Format sebagai datetime tanpa timezone offset
+        // Flutter akan parse sebagai local time device (tidak di-convert ke UTC)
+        return '2000-01-01T' . $timeString;
     }
 }

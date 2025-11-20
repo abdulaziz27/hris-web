@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Attendance;
 use App\Models\Holiday;
+use App\Models\Leave;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\WorkdayCalculator;
@@ -174,7 +175,10 @@ class AbsentEmployeesWidget extends BaseWidget
         }
 
         // Get users yang seharusnya absen (berdasarkan lokasi)
-        $usersQuery = User::query();
+        // Exclude user dengan role 'admin' atau tanpa location_id dari perhitungan
+        $usersQuery = User::query()
+            ->where('role', '!=', 'admin')
+            ->whereNotNull('location_id');
         if ($locationId) {
             $usersQuery->where('location_id', $locationId);
         }
@@ -190,6 +194,42 @@ class AbsentEmployeesWidget extends BaseWidget
             ->map(fn ($date) => Carbon::parse($date)->toDateString())
             ->toArray();
 
+        // Get all approved leaves in the range for performance
+        // Format: ['date' => [user_id1, user_id2, ...]]
+        $approvedLeaves = Leave::where('status', 'approved')
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('start_date', [$start->toDateString(), $end->toDateString()])
+                    ->orWhereBetween('end_date', [$start->toDateString(), $end->toDateString()])
+                    ->orWhere(function ($q) use ($start, $end) {
+                        $q->where('start_date', '<=', $start->toDateString())
+                          ->where('end_date', '>=', $end->toDateString());
+                    });
+            })
+            ->get()
+            ->flatMap(function ($leave) use ($start, $end) {
+                // Generate all dates in leave range that overlap with our date range
+                $leaveStart = Carbon::parse($leave->start_date);
+                $leaveEnd = Carbon::parse($leave->end_date);
+                $overlapStart = $leaveStart->greaterThan($start) ? $leaveStart : $start;
+                $overlapEnd = $leaveEnd->lessThan($end) ? $leaveEnd : $end;
+                
+                $dates = [];
+                $current = $overlapStart->copy();
+                while ($current <= $overlapEnd) {
+                    $dates[] = [
+                        'date' => $current->toDateString(),
+                        'user_id' => $leave->employee_id,
+                    ];
+                    $current->addDay();
+                }
+                return $dates;
+            })
+            ->groupBy('date')
+            ->map(function ($group) {
+                return $group->pluck('user_id')->unique()->toArray();
+            })
+            ->toArray();
+
         // Get all attendance records in the range for performance
         $attendanceQuery = Attendance::whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->whereNotNull('time_in');
@@ -198,8 +238,16 @@ class AbsentEmployeesWidget extends BaseWidget
             $attendanceQuery->where('location_id', $locationId);
         }
         
+        // Group by date string (Y-m-d format) and user_id to ensure consistent key format
         $attendances = $attendanceQuery->get()
-            ->groupBy(['date', 'user_id']);
+            ->groupBy(function ($attendance) {
+                // Ensure date is formatted as Y-m-d string for consistent grouping
+                return Carbon::parse($attendance->date)->toDateString();
+            })
+            ->map(function ($dateGroup) {
+                // Then group by user_id
+                return $dateGroup->groupBy('user_id');
+            });
 
         $absentList = collect([]);
         $current = $start->copy();
@@ -218,7 +266,11 @@ class AbsentEmployeesWidget extends BaseWidget
                     // Cek apakah user sudah absen di hari ini
                     $hasAttended = isset($attendances[$dateString][$user->id]);
                     
-                    if (!$hasAttended) {
+                    // Cek apakah user sedang cuti (approved leave)
+                    $isOnLeave = isset($approvedLeaves[$dateString]) && in_array($user->id, $approvedLeaves[$dateString]);
+                    
+                    // User tidak hadir jika: tidak absen DAN tidak sedang cuti
+                    if (!$hasAttended && !$isOnLeave) {
                         // User tidak hadir - tambahkan ke list
                         // Use unique key: user_id + date for Filament tracking
                         $uniqueKey = $user->id . '_' . $dateString;

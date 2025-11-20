@@ -148,7 +148,10 @@ class DashboardStatsWidget extends BaseWidget
         }
 
         // Get total users yang seharusnya absen (berdasarkan lokasi)
-        $usersQuery = User::query();
+        // Exclude user dengan role 'admin' atau tanpa location_id dari perhitungan
+        $usersQuery = User::query()
+            ->where('role', '!=', 'admin')
+            ->whereNotNull('location_id');
         if ($locationId) {
             $usersQuery->where('location_id', $locationId);
         }
@@ -168,6 +171,42 @@ class DashboardStatsWidget extends BaseWidget
             ->map(fn ($date) => Carbon::parse($date)->toDateString())
             ->toArray();
 
+        // Get all approved leaves in the range for performance
+        // Format: ['date' => [user_id1, user_id2, ...]]
+        $approvedLeaves = \App\Models\Leave::where('status', 'approved')
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('start_date', [$start->toDateString(), $end->toDateString()])
+                    ->orWhereBetween('end_date', [$start->toDateString(), $end->toDateString()])
+                    ->orWhere(function ($q) use ($start, $end) {
+                        $q->where('start_date', '<=', $start->toDateString())
+                          ->where('end_date', '>=', $end->toDateString());
+                    });
+            })
+            ->get()
+            ->flatMap(function ($leave) use ($start, $end) {
+                // Generate all dates in leave range that overlap with our date range
+                $leaveStart = Carbon::parse($leave->start_date);
+                $leaveEnd = Carbon::parse($leave->end_date);
+                $overlapStart = $leaveStart->greaterThan($start) ? $leaveStart : $start;
+                $overlapEnd = $leaveEnd->lessThan($end) ? $leaveEnd : $end;
+                
+                $dates = [];
+                $current = $overlapStart->copy();
+                while ($current <= $overlapEnd) {
+                    $dates[] = [
+                        'date' => $current->toDateString(),
+                        'user_id' => $leave->employee_id,
+                    ];
+                    $current->addDay();
+                }
+                return $dates;
+            })
+            ->groupBy('date')
+            ->map(function ($group) {
+                return $group->pluck('user_id')->unique()->toArray();
+            })
+            ->toArray();
+
         // Get all attendance records in the range for performance
         $attendanceQuery = Attendance::whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->whereNotNull('time_in');
@@ -176,8 +215,12 @@ class DashboardStatsWidget extends BaseWidget
             $attendanceQuery->where('location_id', $locationId);
         }
         
+        // Group by date string (Y-m-d format) to ensure consistent key format
         $attendances = $attendanceQuery->get()
-            ->groupBy('date')
+            ->groupBy(function ($attendance) {
+                // Ensure date is formatted as Y-m-d string for consistent grouping
+                return Carbon::parse($attendance->date)->toDateString();
+            })
             ->map(function ($group) {
                 return $group->pluck('user_id')->unique()->count();
             });
@@ -194,8 +237,12 @@ class DashboardStatsWidget extends BaseWidget
                 // Hitung yang sudah absen (ada record attendance dengan time_in tidak null)
                 $attendedCount = $attendances->get($dateString, 0);
                 
-                // Tidak hadir = Total karyawan - yang sudah absen
-                $absentToday = $totalUsers - $attendedCount;
+                // Get users on approved leave for this date
+                $usersOnLeave = isset($approvedLeaves[$dateString]) ? count($approvedLeaves[$dateString]) : 0;
+                
+                // Tidak hadir = Total karyawan - yang sudah absen - yang sedang cuti
+                // (User yang sedang cuti tidak dihitung sebagai tidak hadir)
+                $absentToday = $totalUsers - $attendedCount - $usersOnLeave;
                 
                 if ($absentToday > 0) {
                     $totalAbsent += $absentToday;
