@@ -148,7 +148,7 @@ class AbsentEmployeesWidget extends BaseWidget
                     ->visible(! $locationId),
 
                 TextColumn::make('position')
-                    ->label('Jabatan')
+                    ->label('Jobdesk')
                     ->placeholder('-'),
 
                 TextColumn::make('status')

@@ -121,14 +121,14 @@ class LatestAttendanceWidget extends BaseWidget
 
         return $table
             ->heading($heading)
-            ->query($query->limit(10))
+            ->query($query)
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Nama Karyawan')
                     ->searchable(),
 
                 TextColumn::make('user.position')
-                    ->label('Jabatan'),
+                    ->label('Jobdesk'),
 
                 TextColumn::make('location.name')
                     ->label('Lokasi')
@@ -193,7 +193,9 @@ class LatestAttendanceWidget extends BaseWidget
                     })
                     ->wrap(),
             ])
-            ->paginated(false);
+            ->defaultSort('date', 'desc')
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25);
     }
 
     private function getDateRangeText(?string $startDate, ?string $endDate): string
