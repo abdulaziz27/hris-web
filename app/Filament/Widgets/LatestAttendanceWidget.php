@@ -10,6 +10,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Contracts\View\View;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class LatestAttendanceWidget extends BaseWidget
 {
@@ -104,24 +105,40 @@ class LatestAttendanceWidget extends BaseWidget
             $heading .= ' - ' . implode(' - ', $parts);
         }
         
-        $query = Attendance::with(['user:id,name,position,location_id', 'location:id,name'])
-            ->latest('date');
-
-        if ($locationId) {
-            $query->where('location_id', $locationId);
-        }
-
-        if ($startDate) {
-            $query->whereDate('date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->whereDate('date', '<=', $endDate);
-        }
-
+        // Use records() method for manual pagination like AbsentEmployeesWidget
+        // This ensures identical pagination behavior
         return $table
             ->heading($heading)
-            ->query($query)
+            ->records(function (int $page, int $recordsPerPage) use ($locationId, $startDate, $endDate): LengthAwarePaginator {
+                $query = Attendance::with(['user:id,name,position,location_id', 'location:id,name'])
+                    ->latest('date');
+
+                if ($locationId) {
+                    $query->where('location_id', $locationId);
+                }
+
+                if ($startDate) {
+                    $query->whereDate('date', '>=', $startDate);
+                }
+
+                if ($endDate) {
+                    $query->whereDate('date', '<=', $endDate);
+                }
+
+                // Get all records and paginate manually
+                $allRecords = $query->get();
+                $total = $allRecords->count();
+                $items = $allRecords->forPage($page, $recordsPerPage)->values();
+
+                // Return LengthAwarePaginator with Eloquent models (not arrays)
+                // This allows columns to access model properties normally
+                return new LengthAwarePaginator(
+                    items: $items,
+                    total: $total,
+                    perPage: $recordsPerPage,
+                    currentPage: $page,
+                );
+            })
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Nama Karyawan')
@@ -194,8 +211,8 @@ class LatestAttendanceWidget extends BaseWidget
                     ->wrap(),
             ])
             ->defaultSort('date', 'desc')
-            ->paginated([10, 25, 50, 100])
-            ->defaultPaginationPageOption(25);
+            ->paginated(true)
+            ->defaultPaginationPageOption(10);
     }
 
     private function getDateRangeText(?string $startDate, ?string $endDate): string
