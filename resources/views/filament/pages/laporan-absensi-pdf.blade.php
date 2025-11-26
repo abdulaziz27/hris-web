@@ -174,6 +174,7 @@
                         <th style="width: 7%;">Jam Masuk</th>
                         <th style="width: 7%;">Jam Keluar</th>
                         <th style="width: 9%;">Jam Kerja</th>
+                        <th style="width: 10%;">Status Ketepatan</th>
                         <th style="width: 8%;">Status</th>
                     </tr>
                 </thead>
@@ -194,6 +195,14 @@
                                 $diff = $start->diff($end);
                                 $workingHours = sprintf('%d jam %d menit', $diff->h, $diff->i);
                             }
+
+                            // Status ketepatan waktu (berdasarkan field status di database)
+                            $punctualStatus = match ($attendance->status) {
+                                'on_time' => 'Tepat Waktu',
+                                'late' => 'Terlambat',
+                                'absent' => 'Tidak Hadir',
+                                default => ucfirst(str_replace('_', ' ', (string) $attendance->status)),
+                            };
 
                             $status = 'Hadir';
                             $statusClass = 'status-hadir';
@@ -216,6 +225,7 @@
                             <td class="text-center">{{ $timeIn }}</td>
                             <td class="text-center">{{ $timeOut }}</td>
                             <td class="text-center">{{ $workingHours }}</td>
+                            <td class="text-center">{{ $punctualStatus }}</td>
                             <td class="text-center">
                                 <span class="status-badge {{ $statusClass }}">
                                     {{ $status }}

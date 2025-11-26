@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
 class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle, WithColumnWidths, WithStyles, WithEvents
 {
@@ -57,6 +58,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
                 $user->id,
                 $user->name,
                 $user->departemen->name ?? '-',
+                '', // Foto profil - akan diinsert via Drawing di AfterSheet
             ];
 
             // Add daily status for each date
@@ -83,7 +85,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
 
     public function headings(): array
     {
-        $headings = ['ID', 'NAMA', 'Bagian'];
+        $headings = ['ID', 'NAMA', 'Bagian', 'Foto'];
 
         // Add date columns
         $current = $this->start->copy();
@@ -130,12 +132,13 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
             'A' => 8,  // ID
             'B' => 25, // NAMA
             'C' => 20, // Bagian
+            'D' => 15, // Foto
         ];
 
         // Date columns
         $dateCount = $this->start->diffInDays($this->end) + 1;
         for ($i = 0; $i < $dateCount; $i++) {
-            $col = $this->getColumnLetter(4 + $i); // D = 4
+            $col = $this->getColumnLetter(5 + $i); // E = 5 (setelah Foto)
             $widths[$col] = 6;
         }
 
@@ -179,7 +182,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
 
         $dateCount = $this->start->diffInDays($this->end) + 1;
         $summaryCols = ['Hari Kerja', 'Hadir', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'HK Review', 'Selisih HK'];
-        $totalCols = 3 + $dateCount + count($summaryCols);
+        $totalCols = 4 + $dateCount + count($summaryCols); // 4 = ID, NAMA, Bagian, Foto
         $lastCol = $this->getColumnLetter($totalCols);
 
         // Merge header cells
@@ -209,7 +212,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
                 $dateCount = $this->start->diffInDays($this->end) + 1;
                 $dataRowCount = count($this->payrollData);
                 $summaryCols = ['Hari Kerja', 'Hadir', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'HK Review', 'Selisih HK'];
-                $totalCols = 3 + $dateCount + count($summaryCols);
+                $totalCols = 4 + $dateCount + count($summaryCols); // 4 = ID, NAMA, Bagian, Foto
                 $lastCol = $this->getColumnLetter($totalCols);
 
                 // Determine header row (where headings start)
@@ -242,11 +245,37 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                     ]);
 
+                    // Insert profile photos
+                    $fotoCol = 'D';
+                    $rowIndex = $headerRow + 1;
+                    foreach ($this->payrollData as $payroll) {
+                        $user = $payroll['user'];
+                        $imageUrl = $user->getRawOriginal('image_url');
+                        
+                        if ($imageUrl && file_exists(storage_path('app/public/' . $imageUrl))) {
+                            $drawing = new Drawing();
+                            $drawing->setName($user->name);
+                            $drawing->setDescription('Foto Profil ' . $user->name);
+                            $drawing->setPath(storage_path('app/public/' . $imageUrl));
+                            $drawing->setHeight(60); // Set height to 60 pixels
+                            $drawing->setWidth(60); // Set width to 60 pixels
+                            $drawing->setCoordinates($fotoCol . $rowIndex);
+                            $drawing->setOffsetX(5);
+                            $drawing->setOffsetY(5);
+                            $drawing->setWorksheet($sheet);
+                            
+                            // Set row height to accommodate image
+                            $sheet->getRowDimension($rowIndex)->setRowHeight(60);
+                        }
+                        
+                        $rowIndex++;
+                    }
+                    
                     // Style daily status cells (date columns)
-                    $dateStartCol = 'D';
-                    $dateEndCol = $this->getColumnLetter(3 + $dateCount);
+                    $dateStartCol = 'E'; // E = 5 (setelah Foto)
+                    $dateEndCol = $this->getColumnLetter(4 + $dateCount); // 4 = setelah ID, NAMA, Bagian, Foto
                     for ($row = $headerRow + 1; $row <= $lastDataRow; $row++) {
-                        for ($colIdx = 4; $colIdx <= 3 + $dateCount; $colIdx++) {
+                        for ($colIdx = 5; $colIdx <= 4 + $dateCount; $colIdx++) { // 5 = E
                             $col = $this->getColumnLetter($colIdx);
                             $cell = $col . $row;
                             $value = $sheet->getCell($cell)->getValue();
@@ -271,7 +300,7 @@ class LaporanPenggajianExport implements FromCollection, WithHeadings, WithTitle
                     }
 
                     // Format number columns
-                    $summaryStartIndex = 4 + $dateCount;
+                    $summaryStartIndex = 5 + $dateCount; // 5 = setelah ID, NAMA, Bagian, Foto, dan tanggal
                     $persentaseCol = $this->getColumnLetter($summaryStartIndex + 2);
                     $nilaiHKCol = $this->getColumnLetter($summaryStartIndex + 3);
                     $estimasiGajiCol = $this->getColumnLetter($summaryStartIndex + 4);

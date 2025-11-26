@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Exports\LaporanAbsensiExport;
 use App\Models\Attendance;
 use App\Models\Location;
 use App\Models\User;
@@ -17,6 +18,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Facades\Excel;
 use UnitEnum;
 
 class LaporanAbsensi extends Page implements HasTable
@@ -231,56 +233,18 @@ class LaporanAbsensi extends Page implements HasTable
                     }, $filename);
                 }),
 
-            Action::make('export_csv')
-                ->label('Ekspor CSV')
-                ->icon('heroicon-o-document-text')
-                ->color('info')
+            Action::make('export_excel')
+                ->label('Ekspor Excel')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
                 ->action(function () {
                     $query = $this->getFilteredTableQuery();
                     $attendances = $query->with(['user', 'location'])->get();
 
-                    // Create CSV content with BOM for proper UTF-8 encoding in Excel
-                    $csvData = "\xEF\xBB\xBF"; // UTF-8 BOM
-                    $csvData .= "No,Nama Karyawan,Lokasi,Jabatan,Departemen,Tanggal,Jam Masuk,Jam Keluar,Jam Kerja,Status\n";
+                    $export = new LaporanAbsensiExport($attendances);
+                    $filename = 'laporan-absensi-' . now()->format('d-m-Y-H-i-s') . '.xlsx';
 
-                    foreach ($attendances as $index => $attendance) {
-                        $timeIn = $attendance->time_in ? Carbon::parse($attendance->time_in)->format('H:i') : '-';
-                        $timeOut = $attendance->time_out ? Carbon::parse($attendance->time_out)->format('H:i') : '-';
-
-                        $workingHours = '-';
-                        if ($attendance->time_in && $attendance->time_out) {
-                            $diff = Carbon::parse($attendance->time_in)->diff(Carbon::parse($attendance->time_out));
-                            $workingHours = sprintf('%d jam %d menit', $diff->h, $diff->i);
-                        }
-
-                        $status = 'Hadir';
-                        if (! $attendance->time_in) {
-                            $status = 'Tidak Masuk';
-                        } elseif (! $attendance->time_out) {
-                            $status = 'Belum Pulang';
-                        }
-
-                        // Properly escape CSV fields
-                        $csvData .= sprintf(
-                            "%d,\"%s\",\"%s\",\"%s\",\"%s\",%s,%s,%s,\"%s\",%s\n",
-                            $index + 1,
-                            str_replace('"', '""', $attendance->user->name),
-                            str_replace('"', '""', $attendance->location->name ?? '-'),
-                            str_replace('"', '""', $attendance->user->position ?? '-'),
-                            str_replace('"', '""', $attendance->user->department ?? '-'),
-                            Carbon::parse($attendance->date)->format('d/m/Y'),
-                            $timeIn,
-                            $timeOut,
-                            str_replace('"', '""', $workingHours),
-                            $status
-                        );
-                    }
-
-                    $filename = 'laporan-absensi-'.now()->format('d-m-Y-H-i-s').'.csv';
-
-                    return response()->streamDownload(function () use ($csvData) {
-                        echo $csvData;
-                    }, $filename);
+                    return Excel::download($export, $filename);
                 }),
         ];
     }
@@ -289,7 +253,19 @@ class LaporanAbsensi extends Page implements HasTable
     {
         return Attendance::query()
             ->with(['user:id,name,position,department', 'location:id,name'])
-            ->select('id', 'user_id', 'location_id', 'date', 'time_in', 'time_out', 'latlon_in', 'latlon_out', 'created_at', 'updated_at')
+            ->select(
+                'id',
+                'user_id',
+                'location_id',
+                'date',
+                'time_in',
+                'time_out',
+                'latlon_in',
+                'latlon_out',
+                'status',       // status ketepatan waktu (on_time, late, absent, ...)
+                'created_at',
+                'updated_at',
+            )
             ->orderBy('date', 'desc');
     }
 

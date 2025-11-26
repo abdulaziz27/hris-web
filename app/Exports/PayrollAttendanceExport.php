@@ -22,6 +22,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
 class PayrollAttendanceExport implements WithMultipleSheets
 {
@@ -102,6 +103,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 $user->id,
                 $user->name,
                 $user->department ?? $user->position ?? '-',
+                '', // Foto profil - akan diinsert via Drawing di AfterSheet
             ];
 
             // Get daily attendance status for each date
@@ -183,18 +185,19 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
             'A' => 8,  // ID (index 1)
             'B' => 25, // NAMA (index 2)
             'C' => 20, // Bagian (index 3)
+            'D' => 15, // Foto (index 4)
         ];
 
         $dateCount = $this->startDate->diffInDays($this->endDate) + 1;
 
-        // Kolom tanggal mulai dari D (index 4)
+        // Kolom tanggal mulai dari E (index 5, setelah Foto)
         for ($i = 0; $i < $dateCount; $i++) {
-            $col = $this->getColumnLetter(4 + $i); // 4 = D
+            $col = $this->getColumnLetter(5 + $i); // 5 = E
             $widths[$col] = 6;
         }
 
         // Kolom summary dimulai setelah kolom tanggal
-        $summaryStartIndex = 4 + $dateCount;
+        $summaryStartIndex = 5 + $dateCount; // 5 = setelah ID, NAMA, Bagian, Foto
         $summaryCols = ['Hari Kerja', 'Hadir', 'Cuti', 'Sakit', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk'];
 
         foreach ($summaryCols as $index => $colName) {
@@ -252,7 +255,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
         $sheet->setCellValue('D3', $periodText);
 
         // Build headings array to calculate last column
-        $headings = ['ID', 'NAMA', 'Bagian'];
+        $headings = ['ID', 'NAMA', 'Bagian', 'Foto'];
         $dayNames = ['Sab', 'Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum'];
         $currentDate = $this->startDate->copy();
         while ($currentDate <= $this->endDate) {
@@ -261,7 +264,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
             $headings[] = $dayNames[$dayIndex];
             $currentDate->addDay();
         }
-        $headings = array_merge($headings, ['Hari Kerja', 'Hadir', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk']);
+        $headings = array_merge($headings, ['Hari Kerja', 'Hadir', 'Cuti', 'Sakit', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk']);
         
         // Calculate lastCol using 1-based index (A = 1, B = 2, etc.)
         $lastCol = $this->getColumnLetter(count($headings));
@@ -291,7 +294,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 $dataRowCount = User::where('location_id', $this->location->id)->where('role', 'employee')->count();
                 
                 // Build headings array
-                $headings = ['ID', 'NAMA', 'Bagian'];
+                $headings = ['ID', 'NAMA', 'Bagian', 'Foto'];
                 $dayNames = ['Sab', 'Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum'];
                 $currentDate = $this->startDate->copy();
                 while ($currentDate <= $this->endDate) {
@@ -314,7 +317,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 }
                 
                 // STEP 2: Set date numbers in row 6 IMMEDIATELY after headings
-                $colIndex = 4; // D = 4
+                $colIndex = 5; // E = 5 (setelah Foto)
                 $currentDate = $this->startDate->copy();
                 while ($currentDate <= $this->endDate) {
                     $col = $this->getColumnLetter($colIndex);
@@ -330,9 +333,10 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 $sheet->mergeCells('A5:A6'); // ID
                 $sheet->mergeCells('B5:B6'); // NAMA
                 $sheet->mergeCells('C5:C6'); // Bagian
+                $sheet->mergeCells('D5:D6'); // Foto
                 
                 // Merge summary columns
-                $summaryStartColIndex = 4 + $dateCount; // D = 4, setelah kolom tanggal
+                $summaryStartColIndex = 5 + $dateCount; // 5 = setelah ID, NAMA, Bagian, Foto, dan tanggal
                 $summaryCols = ['Hari Kerja', 'Hadir', 'Cuti', 'Sakit', 'Persentase', 'Nilai HK', 'Estimasi Gaji', 'Jobdesk'];
                 foreach ($summaryCols as $index => $colName) {
                     $colIndex = $summaryStartColIndex + $index;
@@ -341,7 +345,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 }
                 
                 // STEP 4: RE-SET date numbers in row 6 AFTER merge to ensure they're preserved
-                $colIndex = 4; // D = 4
+                $colIndex = 5; // E = 5 (setelah Foto)
                 $currentDate = $this->startDate->copy();
                 while ($currentDate <= $this->endDate) {
                     $col = $this->getColumnLetter($colIndex);
@@ -369,9 +373,9 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                 ]);
                 
                 // Style date row specifically (row 6) - pastikan font bold dan size 11
-                $dateEndColIndex = 4 + $dateCount - 1; // D = 4, sampai kolom tanggal terakhir
+                $dateEndColIndex = 5 + $dateCount - 1; // E = 5, sampai kolom tanggal terakhir
                 $dateEndCol = $this->getColumnLetter($dateEndColIndex);
-                $sheet->getStyle('D6:' . $dateEndCol . '6')->applyFromArray([
+                $sheet->getStyle('E6:' . $dateEndCol . '6')->applyFromArray([
                     'font' => ['bold' => true, 'size' => 11],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
@@ -391,15 +395,45 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                     ]);
                     
+                    // Insert profile photos
+                    $fotoCol = 'D';
+                    $rowIndex = 7;
+                    $users = User::where('location_id', $this->location->id)
+                        ->where('role', 'employee')
+                        ->orderBy('name')
+                        ->get();
+                    
+                    foreach ($users as $user) {
+                        $imageUrl = $user->getRawOriginal('image_url');
+                        
+                        if ($imageUrl && file_exists(storage_path('app/public/' . $imageUrl))) {
+                            $drawing = new Drawing();
+                            $drawing->setName($user->name);
+                            $drawing->setDescription('Foto Profil ' . $user->name);
+                            $drawing->setPath(storage_path('app/public/' . $imageUrl));
+                            $drawing->setHeight(60); // Set height to 60 pixels
+                            $drawing->setWidth(60); // Set width to 60 pixels
+                            $drawing->setCoordinates($fotoCol . $rowIndex);
+                            $drawing->setOffsetX(5);
+                            $drawing->setOffsetY(5);
+                            $drawing->setWorksheet($sheet);
+                            
+                            // Set row height to accommodate image
+                            $sheet->getRowDimension($rowIndex)->setRowHeight(60);
+                        }
+                        
+                        $rowIndex++;
+                    }
+                    
                     // Style attendance cells as numeric (1/0 values)
                     // Ensure they are treated as numbers and can be edited by user
                     // IMPORTANT: Ensure 0 values are displayed (not empty)
-                    $attendanceEndColIndex = 4 + $dateCount - 1; // D = 4, sampai kolom tanggal terakhir
-                    $attendanceStartCol = $this->getColumnLetter(4); // D = 4
+                    $attendanceEndColIndex = 5 + $dateCount - 1; // E = 5, sampai kolom tanggal terakhir
+                    $attendanceStartCol = $this->getColumnLetter(5); // E = 5
                     $attendanceEndCol = $this->getColumnLetter($attendanceEndColIndex);
                     
                     for ($row = 7; $row <= $lastDataRow; $row++) {
-                        for ($colIdx = 4; $colIdx <= $attendanceEndColIndex; $colIdx++) { // D = 4
+                        for ($colIdx = 5; $colIdx <= $attendanceEndColIndex; $colIdx++) { // E = 5
                             $col = $this->getColumnLetter($colIdx);
                             $cell = $col . $row;
                             
@@ -428,6 +462,7 @@ class PayrollAttendanceSheet implements FromCollection, WithTitle, WithColumnWid
                     
                     // STEP 6: Set Excel formulas for automatic calculation
                     // Calculate column indices for summary columns
+                    // $summaryStartColIndex sudah didefinisikan di atas (line 339)
                     $hariKerjaColIndex = $summaryStartColIndex + 0; // Index 0 = "Hari Kerja"
                     $hadirColIndex = $summaryStartColIndex + 1;     // Index 1 = "Hadir"
                     $cutiColIndex = $summaryStartColIndex + 2;      // Index 2 = "Cuti"
