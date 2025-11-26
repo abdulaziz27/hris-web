@@ -93,16 +93,16 @@ class DashboardStatsWidget extends BaseWidget
     {
         $query = Attendance::where('status', 'on_time');
 
-        if ($startDate) {
-            $query->whereDate('date', '>=', $startDate);
+        // Jika kedua tanggal kosong, default ke hari ini
+        if (! $startDate && ! $endDate) {
+            $query->whereDate('date', today());
         } else {
-            // Default to this month if no date range
-            $query->whereMonth('date', now()->month)
-                ->whereYear('date', now()->year);
-        }
-
-        if ($endDate) {
-            $query->whereDate('date', '<=', $endDate);
+            if ($startDate) {
+                $query->whereDate('date', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('date', '<=', $endDate);
+            }
         }
 
         if ($locationId) {
@@ -116,16 +116,16 @@ class DashboardStatsWidget extends BaseWidget
     {
         $query = Attendance::where('status', 'late');
 
-        if ($startDate) {
-            $query->whereDate('date', '>=', $startDate);
+        // Jika kedua tanggal kosong, default ke hari ini
+        if (! $startDate && ! $endDate) {
+            $query->whereDate('date', today());
         } else {
-            // Default to this month if no date range
-            $query->whereMonth('date', now()->month)
-                ->whereYear('date', now()->year);
-        }
-
-        if ($endDate) {
-            $query->whereDate('date', '<=', $endDate);
+            if ($startDate) {
+                $query->whereDate('date', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('date', '<=', $endDate);
+            }
         }
 
         if ($locationId) {
@@ -142,9 +142,9 @@ class DashboardStatsWidget extends BaseWidget
             $start = Carbon::parse($startDate)->startOfDay();
             $end = Carbon::parse($endDate)->endOfDay();
         } else {
-            // Default to this month if no date range
-            $start = Carbon::now()->startOfMonth()->startOfDay();
-            $end = Carbon::now()->endOfMonth()->endOfDay();
+            // Default ke hari ini jika tidak ada date range
+            $start = Carbon::today()->startOfDay();
+            $end = Carbon::today()->endOfDay();
         }
 
         // Get total users yang seharusnya absen (berdasarkan lokasi)

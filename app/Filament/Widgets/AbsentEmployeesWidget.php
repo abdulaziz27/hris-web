@@ -169,9 +169,9 @@ class AbsentEmployeesWidget extends BaseWidget
             $start = Carbon::parse($startDate)->startOfDay();
             $end = Carbon::parse($endDate)->endOfDay();
         } else {
-            // Default to this month if no date range
-            $start = Carbon::now()->startOfMonth()->startOfDay();
-            $end = Carbon::now()->endOfMonth()->endOfDay();
+            // Default ke hari ini jika tidak ada date range
+            $start = Carbon::today()->startOfDay();
+            $end = Carbon::today()->endOfDay();
         }
 
         // Get users yang seharusnya absen (berdasarkan lokasi)
@@ -272,9 +272,11 @@ class AbsentEmployeesWidget extends BaseWidget
                     // User tidak hadir jika: tidak absen DAN tidak sedang cuti
                     if (!$hasAttended && !$isOnLeave) {
                         // User tidak hadir - tambahkan ke list
-                        // Use unique key: user_id + date for Filament tracking
+                        // Gunakan key unik dan juga simpan sebagai field `id` agar kompatibel dengan Filament Table
+                        // Filament mengharapkan key record bertipe string|int dan biasanya mengambilnya dari field `id`.
                         $uniqueKey = $user->id . '_' . $dateString;
                         $absentList->put($uniqueKey, [
+                            'id' => $uniqueKey,
                             'user_id' => $user->id,
                             'user_name' => $user->name,
                             'date' => $dateString,

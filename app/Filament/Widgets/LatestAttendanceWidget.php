@@ -117,12 +117,17 @@ class LatestAttendanceWidget extends BaseWidget
                     $query->where('location_id', $locationId);
                 }
 
-                if ($startDate) {
-                    $query->whereDate('date', '>=', $startDate);
-                }
+                // Jika kedua tanggal kosong, default ke hari ini
+                if (! $startDate && ! $endDate) {
+                    $query->whereDate('date', today());
+                } else {
+                    if ($startDate) {
+                        $query->whereDate('date', '>=', $startDate);
+                    }
 
-                if ($endDate) {
-                    $query->whereDate('date', '<=', $endDate);
+                    if ($endDate) {
+                        $query->whereDate('date', '<=', $endDate);
+                    }
                 }
 
                 // Get all records and paginate manually
