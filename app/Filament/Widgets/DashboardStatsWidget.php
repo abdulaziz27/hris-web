@@ -34,6 +34,7 @@ class DashboardStatsWidget extends BaseWidget
         
         $locationName = $locationId ? Location::find($locationId)?->name : null;
         $dateRangeDescription = $this->getDateRangeDescription($startDate, $endDate);
+        $leaveDateRangeDescription = $this->getLeaveRangeDescription($startDate, $endDate);
 
         return [
             Stat::make('Total Pegawai', $this->getTotalUsers($locationId))
@@ -71,8 +72,8 @@ class DashboardStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-x-circle')
                 ->color('danger'),
 
-            Stat::make('Cuti Disetujui', $this->getApprovedLeave($locationId, $startDate, $endDate))
-                ->description($this->getLeaveDescription($locationName, $dateRangeDescription))
+            Stat::make('Menunggu Persetujuan Cuti', $this->getApprovedLeave($locationId, $startDate, $endDate))
+                ->description($this->getLeaveDescription($locationName, $leaveDateRangeDescription))
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('success'),
         ];
@@ -257,24 +258,48 @@ class DashboardStatsWidget extends BaseWidget
 
     private function getApprovedLeave(?int $locationId, ?string $startDate, ?string $endDate): int
     {
-        $query = Leave::where('status', 'approved')
-            ->whereNotNull('approved_at');
+        // Hitung jumlah cuti yang MASIH MENUNGGU PERSETUJUAN (status pending)
+        $query = Leave::where('status', 'pending');
 
-        if ($startDate) {
-            $query->whereDate('approved_at', '>=', $startDate);
-        } else {
-            // Default to this month if no date range
-            $query->whereMonth('approved_at', now()->month)
-                ->whereYear('approved_at', now()->year);
-        }
-
-        if ($endDate) {
-            $query->whereDate('approved_at', '<=', $endDate);
-        }
-
+        // Filter berdasarkan lokasi karyawan (jika ada)
         if ($locationId) {
             $query->whereHas('employee', function ($q) use ($locationId) {
                 $q->where('location_id', $locationId);
+            });
+        }
+
+        // Jika tidak ada filter tanggal, default ke 30 hari terakhir (periode cuti yang meliputi range ini)
+        if (! $startDate && ! $endDate) {
+            $endDate = now()->toDateString();
+            $startDate = now()->subDays(29)->toDateString();
+        }
+
+        // Filter berdasarkan periode cuti yang overlap dengan date range (mirip PendingApprovalsWidget)
+        if ($startDate || $endDate) {
+            $query->where(function ($q) use ($startDate, $endDate) {
+                if ($startDate && $endDate) {
+                    $q->where(function ($subQ) use ($startDate, $endDate) {
+                        $subQ->where(function ($q1) use ($startDate, $endDate) {
+                            // Leave start_date is within range
+                            $q1->whereDate('start_date', '>=', $startDate)
+                                ->whereDate('start_date', '<=', $endDate);
+                        })->orWhere(function ($q2) use ($startDate, $endDate) {
+                            // Leave end_date is within range
+                            $q2->whereDate('end_date', '>=', $startDate)
+                                ->whereDate('end_date', '<=', $endDate);
+                        })->orWhere(function ($q3) use ($startDate, $endDate) {
+                            // Leave spans the entire range
+                            $q3->whereDate('start_date', '<=', $startDate)
+                                ->whereDate('end_date', '>=', $endDate);
+                        });
+                    });
+                } elseif ($startDate) {
+                    // Only start date filter - show leaves that end on or after start date
+                    $q->whereDate('end_date', '>=', $startDate);
+                } elseif ($endDate) {
+                    // Only end date filter - show leaves that start on or before end date
+                    $q->whereDate('start_date', '<=', $endDate);
+                }
             });
         }
 
@@ -292,19 +317,39 @@ class DashboardStatsWidget extends BaseWidget
             return 'Sampai ' . Carbon::parse($endDate)->format('d/m/Y');
         }
 
-        return 'Bulan ini';
+        // Default tanpa filter: hari ini
+        return 'Hari ini';
+    }
+
+    /**
+     * Khusus untuk kartu "Menunggu Persetujuan Cuti"
+     * Default tanpa filter: 30 hari terakhir
+     */
+    private function getLeaveRangeDescription(?string $startDate, ?string $endDate): string
+    {
+        if ($startDate && $endDate) {
+            return Carbon::parse($startDate)->format('d/m/Y') . ' - ' . Carbon::parse($endDate)->format('d/m/Y');
+        } elseif ($startDate) {
+            return 'Mulai ' . Carbon::parse($startDate)->format('d/m/Y');
+        } elseif ($endDate) {
+            return 'Sampai ' . Carbon::parse($endDate)->format('d/m/Y');
+        }
+
+        return '30 hari terakhir';
     }
 
     private function getLeaveDescription(?string $locationName, string $dateRangeDescription): string
     {
         $parts = array_filter([$locationName, $dateRangeDescription]);
-        return !empty($parts) ? implode(' - ', $parts) : 'Bulan ini yang disetujui';
+        return !empty($parts)
+            ? 'Menunggu persetujuan ' . implode(' - ', $parts)
+            : 'Menunggu persetujuan hari ini';
     }
 
     private function getAttendanceStatsDescription(?string $locationName, string $dateRangeDescription, string $suffix): string
     {
         $parts = array_filter([$locationName, $dateRangeDescription]);
-        return !empty($parts) ? implode(' - ', $parts) : $suffix . ' bulan ini';
+        return !empty($parts) ? implode(' - ', $parts) : $suffix . ' hari ini';
     }
 
     private function getPageFiltersSafe(): array
