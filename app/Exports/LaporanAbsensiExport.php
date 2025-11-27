@@ -168,7 +168,7 @@ class LaporanAbsensiExport implements FromCollection, WithHeadings, WithTitle, W
                 $lastRow = $this->attendances->count() + 1;
 
                 if ($lastRow > 1) {
-                    // Apply status badge colors
+                    // Apply status badge colors (Status Hadir/Belum Pulang/Tidak Masuk)
                     for ($row = 2; $row <= $lastRow; $row++) {
                         $statusCell = 'J' . $row;
                         $status = $sheet->getCell($statusCell)->getValue();
@@ -184,6 +184,25 @@ class LaporanAbsensiExport implements FromCollection, WithHeadings, WithTitle, W
                             'fill' => [
                                 'fillType' => Fill::FILL_SOLID,
                                 'startColor' => ['rgb' => $bgColor],
+                            ],
+                            'font' => ['bold' => true],
+                        ]);
+                        
+                        // Apply status ketepatan colors (Tepat Waktu/Terlambat/Tidak Hadir)
+                        $punctualStatusCell = 'K' . $row;
+                        $punctualStatus = $sheet->getCell($punctualStatusCell)->getValue();
+
+                        $punctualBgColor = match($punctualStatus) {
+                            'Tepat Waktu' => 'C6EFCE',        // Light green
+                            'Terlambat' => 'FFEB9C',          // Light yellow
+                            'Tidak Hadir' => 'FFC7CE',        // Light red
+                            default => 'FFFFFF'
+                        };
+
+                        $sheet->getStyle($punctualStatusCell)->applyFromArray([
+                            'fill' => [
+                                'fillType' => Fill::FILL_SOLID,
+                                'startColor' => ['rgb' => $punctualBgColor],
                             ],
                             'font' => ['bold' => true],
                         ]);

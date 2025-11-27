@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Attendances\Tables;
 
+use App\Exports\LaporanAbsensiExport;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -11,6 +12,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AttendancesTable
 {
@@ -223,6 +225,49 @@ class AttendancesTable
             ->recordActions([
                 ViewAction::make()
                     ->label('Lihat'),
+                Action::make('download_monthly_report')
+                    ->label('Download Report Bulanan')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function ($record) {
+                        // Ambil tanggal dari record untuk menentukan bulan
+                        $date = \Carbon\Carbon::parse($record->date);
+                        $startOfMonth = $date->copy()->startOfMonth();
+                        $endOfMonth = $date->copy()->endOfMonth();
+                        
+                        // Query semua attendance untuk user ini di bulan tersebut
+                        $attendances = \App\Models\Attendance::query()
+                            ->where('user_id', $record->user_id)
+                            ->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+                            ->with(['user', 'location'])
+                            ->orderBy('date', 'asc')
+                            ->get();
+                        
+                        if ($attendances->isEmpty()) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Tidak ada data')
+                                ->body('Tidak ada data absensi untuk karyawan ini di bulan ' . $date->format('F Y'))
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+                        
+                        // Export ke Excel
+                        $export = new LaporanAbsensiExport($attendances);
+                        $userName = str_replace(' ', '-', $record->user->name);
+                        $monthName = strtolower($date->format('F-Y'));
+                        $filename = "laporan-absensi-{$userName}-{$monthName}.xlsx";
+                        
+                        return Excel::download($export, $filename);
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Download Report Bulanan')
+                    ->modalDescription(fn ($record) => 
+                        'Download laporan absensi bulanan untuk ' . 
+                        $record->user->name . ' - ' . 
+                        \Carbon\Carbon::parse($record->date)->format('F Y')
+                    )
+                    ->modalSubmitActionLabel('Download'),
             ])
             ->toolbarActions([
                 Action::make('export_csv')

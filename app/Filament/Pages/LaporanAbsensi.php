@@ -10,6 +10,7 @@ use BackedEnum;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -208,43 +209,285 @@ class LaporanAbsensi extends Page implements HasTable
                 ->label('Ekspor PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('success')
-                ->action(function () {
-                    $query = $this->getFilteredTableQuery();
-                    $attendances = $query->with(['user', 'location'])->get();
+                ->form([
+                    DatePicker::make('start_date')
+                        ->label('Tanggal Mulai')
+                        ->required()
+                        ->default(now()->startOfMonth())
+                        ->displayFormat('d/m/Y'),
+                    DatePicker::make('end_date')
+                        ->label('Tanggal Selesai')
+                        ->required()
+                        ->default(now()->endOfMonth())
+                        ->displayFormat('d/m/Y'),
+                    Select::make('location_id')
+                        ->label('Lokasi')
+                        ->options(Location::where('is_active', true)->orderBy('name')->pluck('name', 'id')->toArray())
+                        ->searchable()
+                        ->preload()
+                        ->placeholder('Semua Lokasi (kosongkan untuk semua)')
+                        ->reactive()
+                        ->afterStateUpdated(function ($set) {
+                            // Reset user_id ketika location berubah
+                            $set('user_id', null);
+                        }),
+                    Select::make('user_id')
+                        ->label('Karyawan')
+                        ->options(function ($get) {
+                            $locationId = $get('location_id');
+                            $query = User::where('role', '!=', 'admin');
+                            
+                            if ($locationId) {
+                                $query->where('location_id', $locationId);
+                            }
+                            
+                            return $query->orderBy('name')->pluck('name', 'id')->toArray();
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->placeholder('Semua Karyawan (kosongkan untuk semua)')
+                        ->reactive(),
+                ])
+                ->modalHeading('Export Laporan Absensi ke PDF')
+                ->modalDescription('Export laporan absensi dalam format PDF dengan filter periode, lokasi, dan karyawan.')
+                ->action(function (array $data) {
+                    try {
+                        $startDate = Carbon::parse($data['start_date'])->startOfDay();
+                        $endDate = Carbon::parse($data['end_date'])->endOfDay();
+                        $locationId = $data['location_id'] ?? null;
+                        $userId = $data['user_id'] ?? null;
 
-                    // Create PDF using blade view
-                    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('filament.pages.laporan-absensi-pdf', [
-                        'attendances' => $attendances,
-                        'exported_at' => now()->format('d/m/Y H:i'),
-                        'total_records' => $attendances->count(),
-                    ])
-                        ->setPaper('A4', 'landscape')
-                        ->setOptions([
-                            'dpi' => 150,
-                            'defaultFont' => 'sans-serif',
-                            'isHtml5ParserEnabled' => true,
-                            'isRemoteEnabled' => true,
+                        // Build query dengan filter
+                        $query = Attendance::query()
+                            ->with(['user', 'location'])
+                            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+                            ->select(
+                                'id',
+                                'user_id',
+                                'location_id',
+                                'date',
+                                'time_in',
+                                'time_out',
+                                'latlon_in',
+                                'latlon_out',
+                                'status',
+                                'created_at',
+                                'updated_at',
+                            );
+
+                        if ($locationId) {
+                            $query->where('location_id', $locationId);
+                        }
+
+                        if ($userId) {
+                            $query->where('user_id', $userId);
+                        }
+
+                        $attendances = $query->orderBy('date', 'desc')->get();
+
+                        if ($attendances->isEmpty()) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Tidak ada data')
+                                ->body('Tidak ada data absensi untuk periode dan filter yang dipilih.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        // Get filter info for PDF
+                        $locationName = null;
+                        if ($locationId) {
+                            $location = Location::find($locationId);
+                            $locationName = $location ? $location->name : null;
+                        }
+
+                        $userName = null;
+                        if ($userId) {
+                            $user = User::find($userId);
+                            $userName = $user ? $user->name : null;
+                        }
+
+                        // Create PDF using blade view
+                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('filament.pages.laporan-absensi-pdf', [
+                            'attendances' => $attendances,
+                            'exported_at' => now()->format('d/m/Y H:i'),
+                            'total_records' => $attendances->count(),
+                            'start_date' => $startDate->format('d/m/Y'),
+                            'end_date' => $endDate->format('d/m/Y'),
+                            'location_name' => $locationName,
+                            'user_name' => $userName,
+                        ])
+                            ->setPaper('A4', 'landscape')
+                            ->setOptions([
+                                'dpi' => 150,
+                                'defaultFont' => 'sans-serif',
+                                'isHtml5ParserEnabled' => true,
+                                'isRemoteEnabled' => true,
+                            ]);
+
+                        // Generate filename
+                        $filename = 'laporan-absensi-' . $startDate->format('Y-m-d') . '-to-' . $endDate->format('Y-m-d');
+                        if ($locationName) {
+                            $filename .= '-' . strtolower(str_replace(' ', '-', $locationName));
+                        }
+                        if ($userName) {
+                            $filename .= '-' . strtolower(str_replace(' ', '-', $userName));
+                        }
+                        $filename .= '.pdf';
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Export PDF')
+                            ->success()
+                            ->body('File PDF sedang dipersiapkan...')
+                            ->send();
+
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->output();
+                        }, $filename);
+                    } catch (\Exception $e) {
+                        \Log::error('PDF export failed', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
                         ]);
 
-                    $filename = 'laporan-absensi-'.now()->format('d-m-Y-H-i-s').'.pdf';
-
-                    return response()->streamDownload(function () use ($pdf) {
-                        echo $pdf->output();
-                    }, $filename);
+                        \Filament\Notifications\Notification::make()
+                            ->title('Export Gagal')
+                            ->danger()
+                            ->body('Terjadi kesalahan saat export: ' . $e->getMessage())
+                            ->send();
+                    }
                 }),
 
             Action::make('export_excel')
                 ->label('Ekspor Excel')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('success')
-                ->action(function () {
-                    $query = $this->getFilteredTableQuery();
-                    $attendances = $query->with(['user', 'location'])->get();
+                ->form([
+                    DatePicker::make('start_date')
+                        ->label('Tanggal Mulai')
+                        ->required()
+                        ->default(now()->startOfMonth())
+                        ->displayFormat('d/m/Y'),
+                    DatePicker::make('end_date')
+                        ->label('Tanggal Selesai')
+                        ->required()
+                        ->default(now()->endOfMonth())
+                        ->displayFormat('d/m/Y'),
+                    Select::make('location_id')
+                        ->label('Lokasi')
+                        ->options(Location::where('is_active', true)->orderBy('name')->pluck('name', 'id')->toArray())
+                        ->searchable()
+                        ->preload()
+                        ->placeholder('Semua Lokasi (kosongkan untuk semua)')
+                        ->reactive()
+                        ->afterStateUpdated(function ($set) {
+                            // Reset user_id ketika location berubah
+                            $set('user_id', null);
+                        }),
+                    Select::make('user_id')
+                        ->label('Karyawan')
+                        ->options(function ($get) {
+                            $locationId = $get('location_id');
+                            $query = User::where('role', '!=', 'admin');
+                            
+                            if ($locationId) {
+                                $query->where('location_id', $locationId);
+                            }
+                            
+                            return $query->orderBy('name')->pluck('name', 'id')->toArray();
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->placeholder('Semua Karyawan (kosongkan untuk semua)')
+                        ->reactive(),
+                ])
+                ->modalHeading('Export Laporan Absensi ke Excel')
+                ->modalDescription('Export laporan absensi dalam format Excel dengan filter periode, lokasi, dan karyawan.')
+                ->action(function (array $data) {
+                    try {
+                        $startDate = Carbon::parse($data['start_date'])->startOfDay();
+                        $endDate = Carbon::parse($data['end_date'])->endOfDay();
+                        $locationId = $data['location_id'] ?? null;
+                        $userId = $data['user_id'] ?? null;
 
-                    $export = new LaporanAbsensiExport($attendances);
-                    $filename = 'laporan-absensi-' . now()->format('d-m-Y-H-i-s') . '.xlsx';
+                        // Build query dengan filter
+                        $query = Attendance::query()
+                            ->with(['user', 'location'])
+                            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+                            ->select(
+                                'id',
+                                'user_id',
+                                'location_id',
+                                'date',
+                                'time_in',
+                                'time_out',
+                                'latlon_in',
+                                'latlon_out',
+                                'status',
+                                'created_at',
+                                'updated_at',
+                            );
 
-                    return Excel::download($export, $filename);
+                        if ($locationId) {
+                            $query->where('location_id', $locationId);
+                        }
+
+                        if ($userId) {
+                            $query->where('user_id', $userId);
+                        }
+
+                        $attendances = $query->orderBy('date', 'desc')->get();
+
+                        if ($attendances->isEmpty()) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Tidak ada data')
+                                ->body('Tidak ada data absensi untuk periode dan filter yang dipilih.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        $export = new LaporanAbsensiExport($attendances);
+                        
+                        // Generate filename
+                        $filename = 'laporan-absensi-' . $startDate->format('Y-m-d') . '-to-' . $endDate->format('Y-m-d');
+                        if ($locationId) {
+                            $location = Location::find($locationId);
+                            if ($location) {
+                                $filename .= '-' . strtolower(str_replace(' ', '-', $location->name));
+                            }
+                        }
+                        if ($userId) {
+                            $user = User::find($userId);
+                            if ($user) {
+                                $filename .= '-' . strtolower(str_replace(' ', '-', $user->name));
+                            }
+                        }
+                        $filename .= '.xlsx';
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Export Excel')
+                            ->success()
+                            ->body('File Excel sedang dipersiapkan...')
+                            ->send();
+
+                        return Excel::download($export, $filename);
+                    } catch (\Exception $e) {
+                        \Log::error('Excel export failed', [
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]);
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Export Gagal')
+                            ->danger()
+                            ->body('Terjadi kesalahan saat export: ' . $e->getMessage())
+                            ->send();
+                    }
                 }),
         ];
     }

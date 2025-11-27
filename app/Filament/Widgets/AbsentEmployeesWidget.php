@@ -116,9 +116,43 @@ class AbsentEmployeesWidget extends BaseWidget
                 $total = $absentData->count();
                 $items = $absentData->forPage($page, $recordsPerPage)->values();
                 
+                // Ensure all items have valid '__key' field (Filament's required key for array records)
+                // Filament only accepts Model or array, not stdClass
+                // Filament uses ArrayRecord::getKeyName() which defaults to '__key'
+                $itemsArray = $items->map(function ($item) {
+                    if (is_array($item)) {
+                        // Generate unique key if not exists
+                        if (!isset($item['__key']) || $item['__key'] === null || $item['__key'] === '') {
+                            $item['__key'] = (string) (($item['user_id'] ?? 0) . '_' . ($item['date'] ?? 'unknown'));
+                        } else {
+                            // Ensure __key is string or int, not null
+                            $item['__key'] = (string) $item['__key'];
+                        }
+                        // Also keep 'id' for backward compatibility
+                        if (!isset($item['id']) || $item['id'] === null || $item['id'] === '') {
+                            $item['id'] = $item['__key'];
+                        }
+                        // Ensure all required fields exist with non-null values
+                        $item['user_id'] = $item['user_id'] ?? 0;
+                        $item['user_name'] = $item['user_name'] ?? '';
+                        $item['date'] = $item['date'] ?? '';
+                        $item['location_name'] = $item['location_name'] ?? 'Tidak ada lokasi';
+                        $item['position'] = $item['position'] ?? '-';
+                        $item['status'] = $item['status'] ?? 'Tidak Hadir';
+                    }
+                    return $item;
+                })->filter(function ($item) {
+                    // Filter out any items that don't have a valid __key
+                    if (is_array($item)) {
+                        return isset($item['__key']) && $item['__key'] !== null && $item['__key'] !== '';
+                    }
+                    return true;
+                })->values()->toArray();
+                
                 // Return LengthAwarePaginator for Filament to handle pagination
+                // Ensure we always return a valid paginator, even with empty array
                 return new LengthAwarePaginator(
-                    items: $items->toArray(),
+                    items: $itemsArray,
                     total: $total,
                     perPage: $recordsPerPage,
                     currentPage: $page,
@@ -128,33 +162,46 @@ class AbsentEmployeesWidget extends BaseWidget
                 TextColumn::make('user_name')
                     ->label('Nama Karyawan')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->state(function ($record): string {
+                        // Record is an array when using records() with array data
+                        return is_array($record) ? ($record['user_name'] ?? '') : ($record->user_name ?? '');
+                    })
+                    ->default(''),
 
                 TextColumn::make('date')
                     ->label('Tanggal')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->state(function ($record): string {
+                        return is_array($record) ? ($record['date'] ?? '') : ($record->date ?? '');
+                    })
+                    ->default(''),
 
                 TextColumn::make('location_name')
                     ->label('Lokasi')
                     ->badge()
                     ->color('info')
-                    ->state(function ($record): ?string {
-                        // When using records(), $record is an array
-                        return is_array($record) ? ($record['location_name'] ?? null) : ($record->location_name ?? null);
+                    ->state(function ($record): string {
+                        return is_array($record) ? ($record['location_name'] ?? 'Tidak ada lokasi') : ($record->location_name ?? 'Tidak ada lokasi');
                     })
-                    ->placeholder('Tidak ada lokasi')
                     ->default('Tidak ada lokasi')
                     ->visible(! $locationId),
 
                 TextColumn::make('position')
                     ->label('Jobdesk')
-                    ->placeholder('-'),
+                    ->state(function ($record): string {
+                        return is_array($record) ? ($record['position'] ?? '-') : ($record->position ?? '-');
+                    })
+                    ->default('-'),
 
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->color('danger')
+                    ->state(function ($record): string {
+                        return is_array($record) ? ($record['status'] ?? 'Tidak Hadir') : ($record->status ?? 'Tidak Hadir');
+                    })
                     ->default('Tidak Hadir'),
             ])
             ->defaultSort('date', 'desc')
@@ -276,12 +323,13 @@ class AbsentEmployeesWidget extends BaseWidget
                         // Filament mengharapkan key record bertipe string|int dan biasanya mengambilnya dari field `id`.
                         $uniqueKey = $user->id . '_' . $dateString;
                         $absentList->put($uniqueKey, [
-                            'id' => $uniqueKey,
-                            'user_id' => $user->id,
-                            'user_name' => $user->name,
+                            '__key' => $uniqueKey, // Filament's required key for array records
+                            'id' => $uniqueKey, // Also keep for backward compatibility
+                            'user_id' => $user->id ?? 0,
+                            'user_name' => $user->name ?? '',
                             'date' => $dateString,
-                            'location_name' => $user->location?->name ?? null,
-                            'position' => $user->position ?? null,
+                            'location_name' => $user->location?->name ?? 'Tidak ada lokasi',
+                            'position' => $user->position ?? '-',
                             'status' => 'Tidak Hadir',
                         ]);
                     }

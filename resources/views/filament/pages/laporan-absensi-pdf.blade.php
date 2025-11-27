@@ -153,6 +153,32 @@
     <div class="filter-info">
         <h3>Informasi Laporan:</h3>
         <div class="filter-item">
+            <strong>Periode:</strong> 
+            @if(isset($start_date) && isset($end_date))
+                {{ $start_date }} - {{ $end_date }}
+            @else
+                Semua Periode
+            @endif
+        </div>
+        @if(isset($location_name) && $location_name)
+        <div class="filter-item">
+            <strong>Lokasi:</strong> {{ $location_name }}
+        </div>
+        @else
+        <div class="filter-item">
+            <strong>Lokasi:</strong> Semua Lokasi
+        </div>
+        @endif
+        @if(isset($user_name) && $user_name)
+        <div class="filter-item">
+            <strong>Karyawan:</strong> {{ $user_name }}
+        </div>
+        @else
+        <div class="filter-item">
+            <strong>Karyawan:</strong> Semua Karyawan
+        </div>
+        @endif
+        <div class="filter-item">
             <strong>Total Records:</strong> {{ $total_records ?? count($attendances) }}
         </div>
         <div class="filter-item">
